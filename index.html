@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>MANTA OUTBREAK // METAL SLUG BIO-WARFARE SIMULATOR</title>
+  <title>Bottito's - Manta Outbreak</title>
   
-  <!-- Google Fonts: Black Ops One (Metal Slug Military), Russo One, Chakra Petch, JetBrains Mono -->
+  <!-- Google Fonts: Black Ops One, Chakra Petch, JetBrains Mono, Russo One -->
   <link href="https://fonts.googleapis.com" rel="preconnect"/>
   <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
   <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700;800&family=Russo+One&display=swap" rel="stylesheet"/>
@@ -29,549 +29,648 @@
   <script src="js/sprites.js"></script>
 </head>
 
-<body class="bg-[#090d0a] text-slate-100 font-tactical text-xs select-none min-h-screen flex flex-col p-2 sm:p-3 overflow-x-hidden border-4 border-[#1c241e]">
+<body class="bg-[#080c10] text-slate-100 font-tactical text-xs select-none h-screen flex flex-col p-1.5 sm:p-2 overflow-hidden">
 
-  <!-- 1. METAL SLUG ARCADE HEADER // MISSION MARQUEE -->
-  <header class="armor-plate rounded p-2 mb-2 flex flex-col gap-1.5 border-2 border-[#4b5e4e]">
-    <!-- Rivet Corners -->
-    <div class="absolute top-1 left-1 armor-rivet"></div>
-    <div class="absolute top-1 right-1 armor-rivet"></div>
-    <div class="absolute bottom-1 left-1 armor-rivet"></div>
-    <div class="absolute bottom-1 right-1 armor-rivet"></div>
-
-    <div class="flex flex-wrap items-center justify-between gap-2 px-1">
-      <!-- Army Badge & Metal Slug Header -->
-      <div class="flex items-center gap-2">
-        <div class="px-2 py-1 bg-[#101712] border-2 border-slug-gold rounded flex items-center gap-1.5 shadow-md">
-          <span class="text-slug-gold font-stencil text-xs">★ P.F. SQUAD</span>
-          <span class="text-slate-400 font-mono text-[9px]">REGULAR ARMY</span>
-        </div>
-        <div class="flex flex-col">
-          <h1 class="metal-slug-title text-base sm:text-xl tracking-wider leading-none">
-            MANTA OUTBREAK: MISSION 1
+  <!-- 1. STREAMLINED ARCADE COMMAND HEADER (COMPACT & HARMONIOUS) -->
+  <header class="glass-panel rounded-lg px-2.5 py-1.5 flex flex-col gap-1 shrink-0 border border-slate-700/60 shadow-lg">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      
+      <!-- Title & Mission Selection -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+          <h1 class="arcade-title text-base sm:text-lg tracking-wider">
+            MANTA OUTBREAK
           </h1>
-          <span class="text-slug-gold font-heavy text-[9px] tracking-widest text-shadow">
-            OPERATION: ZOMBIE BIO-HAZARD CONTAINMENT // CANTÓN MANTA
+          <span class="hidden sm:inline-block px-1.5 py-0.5 bg-yellow-950/80 text-yellow-400 border border-yellow-500/40 rounded text-[9px] font-mono">
+            BIO-WARFARE
           </span>
         </div>
+
+        <!-- Mission Scenario Selector Pills -->
+        <div class="hidden md:flex items-center gap-1 bg-black/60 p-0.5 rounded-md border border-slate-800">
+          <button class="px-2 py-0.5 rounded text-[9px] font-heavy text-red-400 bg-red-950/60 border border-red-600/50 transition-all cursor-pointer" id="slug-tab-1" onclick="switchScenario('A'); SFX.button();">
+            🎭 CARNAVAL (R0: 4.8)
+          </button>
+          <button class="px-2 py-0.5 rounded text-[9px] font-heavy text-slate-400 hover:text-amber-300 transition-all cursor-pointer" id="slug-tab-2" onclick="switchScenario('B'); SFX.button();">
+            🌙 TOQUE QUEDA (R0: 2.1)
+          </button>
+          <button class="px-2 py-0.5 rounded text-[9px] font-heavy text-slate-400 hover:text-emerald-300 transition-all cursor-pointer" id="slug-tab-3" onclick="switchScenario('C'); SFX.button();">
+            🧪 ANTÍDOTO (R0: 0.7)
+          </button>
+        </div>
       </div>
 
-      <!-- High Score, Credits & Neo-Geo Audio -->
-      <div class="flex items-center gap-2 sm:gap-3 text-xs">
-        <!-- 1UP Score -->
-        <div class="bg-black/80 px-2 py-1 border border-slug-green rounded flex flex-col items-center">
-          <span class="text-red-500 font-heavy text-[9px] leading-tight">1UP SCORE</span>
-          <span class="text-white font-stencil text-xs sm:text-sm tracking-wider" id="score-counter">034,800</span>
+      <!-- Quick Telemetry Pills (Integrated & Harmonious) -->
+      <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-0.5 text-[10px]">
+        <!-- Total -->
+        <div class="flex items-center gap-1 px-2 py-0.5 bg-black/60 border border-slate-800 rounded">
+          <span class="text-slate-400 text-[9px]">POP:</span>
+          <span class="font-mono text-white font-bold">271K</span>
         </div>
-        <!-- High Score Target (Total Cantón Pop) -->
-        <div class="bg-black/80 px-2 py-1 border border-slug-green rounded flex flex-col items-center">
-          <span class="text-slug-gold font-heavy text-[9px] leading-tight">CANTÓN POP</span>
-          <span class="text-slug-gold font-stencil text-xs sm:text-sm tracking-wider">271,145</span>
+        <!-- Humanos -->
+        <div class="flex items-center gap-1 px-2 py-0.5 bg-emerald-950/40 border border-emerald-500/40 rounded">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span class="text-emerald-300 font-mono font-bold" id="metric-healthy">249.4K</span>
+          <span class="text-emerald-400/70 text-[9px]" id="metric-healthy-pct">92%</span>
         </div>
-        <!-- Coin Slot Button -->
-        <button class="btn-slug-gold px-2.5 py-1.5 rounded text-[10px] text-black font-heavy flex items-center gap-1" onclick="SFX.coin(); addCreditToken();">
-          <span>+ COIN</span>
-          <span class="bg-black/80 text-yellow-300 px-1 py-0.2 rounded font-mono text-[9px]" id="credit-token-badge">04</span>
+        <!-- Mordidos -->
+        <div class="flex items-center gap-1 px-2 py-0.5 bg-amber-950/40 border border-amber-500/40 rounded">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          <span class="text-amber-300 font-mono font-bold" id="metric-bitten">0</span>
+          <span class="text-amber-400/70 text-[9px]">MORDIDOS</span>
+          <span class="hidden" id="metric-bitten-pct">0%</span>
+        </div>
+        <!-- Zombis -->
+        <div class="flex items-center gap-1 px-2 py-0.5 bg-red-950/50 border border-red-500/50 rounded">
+          <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+          <span class="text-red-400 font-mono font-bold pulse-alert" id="metric-infected">0</span>
+          <span class="text-red-400/70 text-[9px]">ZOMBIS</span>
+          <span class="hidden" id="metric-infected-pct">0%</span>
+        </div>
+        <!-- Inmunes -->
+        <div class="flex items-center gap-1 px-2 py-0.5 bg-yellow-950/40 border border-yellow-500/40 rounded">
+          <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+          <span class="text-yellow-300 font-mono font-bold" id="metric-immune">21.6K</span>
+          <span class="text-yellow-400/70 text-[9px]" id="metric-immune-pct">8%</span>
+        </div>
+        <!-- Munición -->
+        <div class="flex items-center gap-1 px-2 py-0.5 bg-cyan-950/40 border border-cyan-500/40 rounded">
+          <span class="material-symbols-outlined text-cyan-400 text-[11px]">target</span>
+          <span class="text-cyan-300 font-mono font-bold" id="metric-ammo">800</span>
+          <span class="text-cyan-400/70 text-[8px]" id="metric-ammo-status">BALAS</span>
+        </div>
+        <!-- Cajas Antídoto -->
+        <div class="flex items-center gap-1 px-2 py-0.5 bg-amber-950/40 border border-amber-400/40 rounded">
+          <span class="material-symbols-outlined text-yellow-400 text-[11px]">paragliding</span>
+          <span class="text-yellow-300 font-mono font-bold" id="metric-cure-crates">03</span>
+          <span class="text-yellow-400/70 text-[8px]">CURAS</span>
+        </div>
+        <!-- R0 -->
+        <div class="hidden lg:flex items-center gap-1 px-2 py-0.5 bg-black/60 border border-slate-800 rounded">
+          <span class="text-amber-400 text-[9px]">R0:</span>
+          <span class="font-mono text-amber-300 font-bold" id="metric-r0">3.82</span>
+          <span class="hidden" id="metric-r0-badge">PELIGRO</span>
+        </div>
+      </div>
+
+      <!-- Arcade Controls, Score & Layer Toggle -->
+      <div class="flex items-center gap-2">
+        <!-- 1UP Score Display -->
+        <div class="bg-black/90 px-2 py-0.5 border border-slate-700 rounded flex items-center gap-1.5">
+          <span class="text-red-500 font-heavy text-[9px]">1UP</span>
+          <span class="text-yellow-300 font-led text-xs font-bold" id="score-counter">000,000</span>
+        </div>
+
+        <!-- Tile Layer Toggle -->
+        <div class="flex items-center bg-black/70 p-0.5 border border-slate-800 rounded">
+          <button class="px-2 py-0.5 text-[9px] rounded text-emerald-400 font-heavy bg-emerald-950/70 border border-emerald-500/40" id="slug-layer-dark" onclick="setTileLayer('dark'); SFX.button();">
+            OSCURO
+          </button>
+          <button class="px-2 py-0.5 text-[9px] rounded text-slate-400 font-heavy hover:text-white" id="slug-layer-satellite" onclick="setTileLayer('satellite'); SFX.button();">
+            SATÉLITE
+          </button>
+        </div>
+
+        <!-- Quick Airdrop Button -->
+        <button class="btn-arcade-red px-2.5 py-1 rounded text-[9px] flex items-center gap-1 cursor-pointer" id="btn-main-airdrop" onclick="deployCureAirdrop();">
+          <span class="material-symbols-outlined text-xs">paragliding</span>
+          <span>AIRDROP (<span id="btn-crate-count">3</span>)</span>
         </button>
-        <button class="btn-slug-dark px-2 py-1.5 rounded text-[9px] text-emerald-300 font-heavy" id="btn-sfx-slug" onclick="SFX.toggleMute()">
-          SFX: NEO-GEO
+
+        <!-- SFX & Coin Buttons -->
+        <button class="p-1 rounded bg-black/60 border border-slate-800 text-slate-300 hover:text-emerald-400 cursor-pointer" id="btn-sfx-slug" onclick="SFX.toggleMute()" title="Audio Neo-Geo">
+          <span class="material-symbols-outlined text-sm">volume_up</span>
+        </button>
+        <button class="px-2 py-1 rounded bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-[9px] font-heavy hover:bg-yellow-500/30 cursor-pointer" onclick="SFX.coin(); addCreditToken();" title="Insertar Moneda">
+          + COIN <span id="credit-token-badge">04</span>
         </button>
       </div>
     </div>
 
-    <!-- Hazard Caution Scrolling News Ticker -->
-    <div class="flex items-center bg-black/90 border border-amber-600/70 rounded overflow-hidden mt-0.5">
-      <div class="hazard-stripe px-2 py-1 font-heavy text-[9px] text-black font-extrabold uppercase shrink-0 flex items-center gap-1">
-        <span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
-        WARNING:
-      </div>
-      <div class="overflow-hidden w-full whitespace-nowrap px-2 py-0.5">
-        <div class="animate-marquee font-mono text-[11px] text-amber-300 font-bold tracking-wide" id="slug-news-ticker">
-          ★ MISSION 1 BRIEFING: METEOR-Z VIRUS TRANSMITTED VIA SEAFOOD AT TARQUI MARKET // REGULAR ARMY ESTABLISHES ARMORED ROADBLOCKS ON SPONDYLUS E15 & E30 // SLUG CHEMICAL ANTIDOTE AIRDROP AUTHORIZED OVER CRITICAL SECTORS ★
-        </div>
-      </div>
-    </div>
-
-    <!-- TANK DASHBOARD METRICS MATRIX (SV-001 Cockpit Telemetry) -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 pt-0.5">
-      <!-- Canton Total Population -->
-      <div class="bg-[#121914] p-1.5 border border-[#3b4c3e] rounded flex flex-col justify-between shadow-inner">
-        <div class="flex items-center justify-between text-slate-400 font-heavy text-[9px]">
-          <span>TOTAL POBLACIÓN</span>
-          <span class="material-symbols-outlined text-xs text-slug-gold">shield</span>
-        </div>
-        <div class="flex items-baseline justify-between mt-0.5">
-          <span class="font-stencil text-base text-white tracking-wider">271,145</span>
-          <span class="font-mono text-[9px] text-emerald-400 font-bold">CENSO OK</span>
-        </div>
-      </div>
-
-      <!-- Human Survivors (Regular Army Soldiers) -->
-      <div class="bg-[#121914] p-1.5 border-2 border-emerald-500/70 rounded flex flex-col justify-between shadow-inner">
-        <div class="flex items-center justify-between text-emerald-400 font-heavy text-[9px]">
-          <span>SOLDIERS / HUMANOS</span>
-          <span class="material-symbols-outlined text-xs text-emerald-400">military_tech</span>
-        </div>
-        <div class="flex items-baseline justify-between mt-0.5">
-          <span class="font-stencil text-base text-emerald-300 tracking-wider" id="metric-healthy">267,820</span>
-          <span class="font-mono text-[9px] text-emerald-400 font-bold" id="metric-healthy-pct">98.7%</span>
-        </div>
-      </div>
-
-      <!-- Zombie Infestation (Bile Vomit Danger) -->
-      <div class="bg-[#1d0e12] p-1.5 border-2 border-red-600 rounded flex flex-col justify-between shadow-inner">
-        <div class="flex items-center justify-between text-red-400 font-heavy text-[9px]">
-          <span>ZOMBI INFESTATION</span>
-          <span class="material-symbols-outlined text-xs text-red-500 animate-pulse">skull</span>
-        </div>
-        <div class="flex items-baseline justify-between mt-0.5">
-          <span class="font-stencil text-base text-red-400 tracking-wider pulse-alert" id="metric-infected">003,240</span>
-          <span class="font-mono text-[9px] text-red-400 font-bold" id="metric-infected-pct">+1.2%</span>
-        </div>
-      </div>
-
-      <!-- Cured POWs / Recovered Soldiers -->
-      <div class="bg-[#121914] p-1.5 border border-[#3b4c3e] rounded flex flex-col justify-between shadow-inner">
-        <div class="flex items-center justify-between text-yellow-400 font-heavy text-[9px]">
-          <span>CURADOS / ANTIDOTE</span>
-          <span class="material-symbols-outlined text-xs text-yellow-400">medical_services</span>
-        </div>
-        <div class="flex items-baseline justify-between mt-0.5">
-          <span class="font-stencil text-base text-yellow-300 tracking-wider" id="metric-recovered">85</span>
-          <span class="font-mono text-[9px] text-yellow-400 font-bold">THANK YOU!</span>
-        </div>
-      </div>
-
-      <!-- KIA Casualties -->
-      <div class="bg-[#121914] p-1.5 border border-[#3b4c3e] rounded flex flex-col justify-between shadow-inner">
-        <div class="flex items-center justify-between text-slate-400 font-heavy text-[9px]">
-          <span>KIA FATALITIES</span>
-          <span class="material-symbols-outlined text-xs text-red-500">dangerous</span>
-        </div>
-        <div class="flex items-baseline justify-between mt-0.5">
-          <span class="font-stencil text-base text-slate-300 tracking-wider" id="metric-deaths">120</span>
-          <span class="font-mono text-[9px] text-red-400 font-bold">CFR 3.7%</span>
-        </div>
-      </div>
-
-      <!-- Transmission Index R0 -->
-      <div class="bg-[#121914] p-1.5 border border-[#3b4c3e] rounded flex flex-col justify-between shadow-inner">
-        <div class="flex items-center justify-between text-amber-400 font-heavy text-[9px]">
-          <span>VECTOR R0 DANGER</span>
-          <span class="material-symbols-outlined text-xs text-amber-400">speed</span>
-        </div>
-        <div class="flex items-baseline justify-between mt-0.5">
-          <span class="font-stencil text-base text-amber-400 tracking-wider" id="metric-r0">3.82</span>
-          <span class="font-mono text-[9px] text-amber-300 font-bold" id="metric-r0-badge">EXTREME</span>
+    <!-- Ticker Bar (Slim & Elegant) -->
+    <div class="flex items-center gap-2 bg-black/70 px-2 py-0.5 rounded border border-slate-800/80 text-[10px] text-amber-300 overflow-hidden">
+      <span class="px-1 py-0.2 bg-red-900/80 text-red-200 text-[8px] font-heavy rounded uppercase shrink-0">INTEL:</span>
+      <div class="overflow-hidden w-full whitespace-nowrap">
+        <div class="animate-marquee font-mono" id="slug-news-ticker">
+          ★ SIMULADOR TÁCTICO LISTO // CLIC DERECHO EN CUALQUIER CALLE DE MANTA PARA ENFOCAR O ELEGIR EPICENTRO ZERO ★
         </div>
       </div>
     </div>
   </header>
 
-  <!-- 2. MISSION SCENARIOS & TACTICAL MAP SELECTOR -->
-  <section class="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2 items-center">
-    <!-- 3 Mission Operation Tabs -->
-    <div class="md:col-span-7 grid grid-cols-3 gap-1.5 armor-plate p-1.5 rounded">
-      <!-- Mission 1 -->
-      <button class="p-1.5 bg-[#201015] border-2 border-red-600 text-left rounded shadow-md flex flex-col" id="slug-tab-1" onclick="switchScenario('A'); SFX.button();">
-        <div class="flex items-center justify-between">
-          <span class="font-heavy text-[10px] text-red-400 uppercase">MISIÓN 1: CARNAVAL</span>
-          <span class="font-mono text-[9px] text-red-400 font-bold">18 D (100%)</span>
-        </div>
-        <span class="text-slate-400 text-[9px] truncate">Tarqui + Murciélago masivo</span>
-      </button>
-
-      <!-- Mission 2 -->
-      <button class="p-1.5 bg-[#121914] border border-slate-700 text-left rounded hover:border-amber-400 transition-all flex flex-col" id="slug-tab-2" onclick="switchScenario('B'); SFX.button();">
-        <div class="flex items-center justify-between">
-          <span class="font-heavy text-[10px] text-slate-300 uppercase" id="title-slug-tab-2">MISIÓN 2: TOQUE QUEDA</span>
-          <span class="font-mono text-[9px] text-amber-400 font-bold">45 D (54%)</span>
-        </div>
-        <span class="text-slate-400 text-[9px] truncate">Puerto + Bloqueo nocturno</span>
-      </button>
-
-      <!-- Mission 3 -->
-      <button class="p-1.5 bg-[#121914] border border-slate-700 text-left rounded hover:border-emerald-400 transition-all flex flex-col" id="slug-tab-3" onclick="switchScenario('C'); SFX.button();">
-        <div class="flex items-center justify-between">
-          <span class="font-heavy text-[10px] text-slate-300 uppercase" id="title-slug-tab-3">MISIÓN 3: ANTÍDOTO</span>
-          <span class="font-mono text-[9px] text-emerald-400 font-bold">CONTENIDO</span>
-        </div>
-        <span class="text-slate-400 text-[9px] truncate">Eloy Alfaro + Drones E30</span>
-      </button>
-    </div>
-
-    <!-- Map Tile Mode (Tactical vs Satellite) & Rapid Supply Drop Button -->
-    <div class="md:col-span-5 flex items-center justify-between gap-1.5 armor-plate p-1.5 rounded">
-      <!-- 2 Map Layer Buttons -->
-      <div class="flex items-center gap-1 bg-black/70 p-1 border border-slug-steel rounded">
-        <button class="btn-slug-green px-2.5 py-1 text-[9px] rounded text-black font-heavy" id="slug-layer-dark" onclick="setTileLayer('dark'); SFX.button();">
-          🌑 TÁCTICO OSCURO
-        </button>
-        <button class="btn-slug-dark px-2.5 py-1 text-[9px] rounded text-slate-300 font-heavy" id="slug-layer-satellite" onclick="setTileLayer('satellite'); SFX.button();">
-          🛰️ SATÉLITE 2D
-        </button>
-      </div>
-
-      <!-- Supply Crate Airdrop Button -->
-      <button class="btn-slug-red px-3 py-1.5 rounded text-[10px] text-white font-heavy flex items-center gap-1 shadow-lg shrink-0" onclick="deployCureAirdrop(); SFX.cure();">
-        <span class="material-symbols-outlined text-sm font-bold">paragliding</span>
-        <span>SLUG AIRDROP</span>
-      </button>
-    </div>
-  </section>
-
-  <!-- 3. MAIN WORKBENCH: BATTLEFIELD RADAR (Cols 8) + SLUG SUPPLY LAB (Cols 4) -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-2 flex-1">
+  <!-- 2. MAIN WORKSPACE: EXPANDED MAP (Cols 9) + UNIFIED DOCK (Cols 3) -->
+  <main class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-1.5 sm:gap-2 mt-1.5">
     
-    <!-- LEFT/CENTER: 2D REAL OPENSTREETMAP BATTLEFIELD RADAR (Cols 8) -->
-    <div class="lg:col-span-8 flex flex-col gap-2">
+    <!-- LEFT/CENTER: 2D MAP RADAR (Takes 9 columns & Full Vertical Space!) -->
+    <div class="lg:col-span-9 h-full min-h-0 flex flex-col glass-panel rounded-lg overflow-hidden border border-slate-700/60 relative">
       
-      <!-- Heavy Armored Cabinet Frame -->
-      <div class="armor-plate rounded-lg overflow-hidden flex flex-col shadow-2xl relative h-[500px] border-2 border-[#546b58]">
-        <!-- Top Rivets -->
-        <div class="absolute top-1 left-2 armor-rivet z-40"></div>
-        <div class="absolute top-1 right-2 armor-rivet z-40"></div>
-        <div class="absolute bottom-1 left-2 armor-rivet z-40"></div>
-        <div class="absolute bottom-1 right-2 armor-rivet z-40"></div>
+      <!-- Sleek Radar Top Bar -->
+      <div class="h-7 bg-[#10171e]/90 px-3 border-b border-slate-800 flex items-center justify-between z-30 shrink-0">
+        <div class="flex items-center gap-2 font-heavy text-[10px] text-slate-300">
+          <span class="text-cyan-400 font-mono">RADAR TÁCTICO MANTA</span>
+          <span class="text-slate-600">|</span>
+          <span class="text-slate-400 text-[9px]">LAT -0.95° LON -80.72°</span>
+        </div>
+        <div class="flex items-center gap-3 font-mono text-[10px]">
+          <span class="text-slate-400">ZOOM: <strong class="text-white" id="slug-map-zoom">13X</strong></span>
+          <span class="text-slate-400">TROPAS: <strong class="text-emerald-400" id="slug-agent-count">95</strong></span>
+          <span id="zoom-badge-indicator" class="hidden sm:inline-block">
+            <span class="text-cyan-400 text-[9px]">VISTA GENERAL [13X]</span>
+          </span>
+          <span class="text-yellow-400">ESTADO: <strong class="text-emerald-400" id="slug-sim-status">PRE-BROTE (DÍA 0)</strong></span>
+        </div>
+      </div>
 
-        <!-- Radar Cockpit Header -->
-        <div class="h-8 bg-[#131b15] px-3 border-b-2 border-[#3c4c3e] flex items-center justify-between z-30 shrink-0">
-          <div class="flex items-center gap-2 font-heavy text-[10px] text-slug-gold">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-            <span>TACTICAL RADAR // CANTÓN MANTA (LAT -0.95° LON -80.72°)</span>
+      <!-- LEAFLET MAP & BATTLEFIELD CANVAS CONTAINER -->
+      <div class="relative flex-1 w-full h-full min-h-0" id="battlefield-wrapper">
+        
+        <!-- Leaflet Street Map -->
+        <div id="osm-map" class="absolute inset-0 w-full h-full z-10"></div>
+
+        <!-- CRT Scanlines Overlay -->
+        <div class="absolute inset-0 crt-overlay z-20 pointer-events-none opacity-30"></div>
+
+        <!-- Day/Night Ambient Filter -->
+        <div class="absolute inset-0 pointer-events-none z-20 transition-colors duration-700 bg-transparent" id="ambient-tint-layer"></div>
+
+        <!-- HTML5 CANVAS FOR METAL SLUG SPRITES -->
+        <canvas class="absolute inset-0 w-full h-full pointer-events-none z-30" id="agent-canvas"></canvas>
+
+        <!-- SVG FOR SLUG SUPPLY CRATE PARACHUTE AIRDROP -->
+        <svg class="absolute inset-0 w-full h-full pointer-events-none z-30" id="slug-airdrop-svg">
+          <g id="slug-parachute-crate" opacity="0" transform="translate(0, 0)">
+            <path d="M -22,-24 Q 0,-50 22,-24 Z" fill="#f59e0b" stroke="#78350f" stroke-width="2"></path>
+            <line x1="-22" y1="-24" x2="-8" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
+            <line x1="22" y1="-24" x2="8" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
+            <line x1="0" y1="-44" x2="0" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
+            <rect x="-12" y="-6" width="24" height="16" fill="#854d0e" stroke="#fde047" stroke-width="2" rx="1"></rect>
+            <line x1="-12" y1="2" x2="12" y2="2" stroke="#5a3407" stroke-width="1.5"></line>
+            <text x="0" y="6" fill="#fef08a" font-family="'Russo One'" font-size="7" font-weight="bold" text-anchor="middle">CURE</text>
+          </g>
+        </svg>
+
+        <!-- RIGHT-CLICK TACTICAL CONTEXT MENU -->
+        <div id="map-context-menu">
+          <div class="bg-black/95 px-2.5 py-1 text-[9px] font-heavy text-amber-300 border-b border-slate-700 flex items-center justify-between">
+            <span>ACCIONES TÁCTICAS</span>
+            <span class="material-symbols-outlined text-xs">radar</span>
           </div>
-          <div class="flex items-center gap-3 font-mono text-[10px] text-slate-400">
-            <span>ZOOM: <strong class="text-white" id="slug-map-zoom">13X</strong></span>
-            <span>TROOPS: <strong class="text-emerald-400" id="slug-agent-count">95</strong></span>
-            <span class="text-yellow-400">STATUS: <strong class="text-emerald-400" id="slug-sim-status">COMBAT READY</strong></span>
+          <div class="context-menu-item" onclick="focusOnCoordinates(); SFX.button();">
+            <span class="material-symbols-outlined text-emerald-400 text-sm">center_focus_strong</span>
+            <span>ENFOCAR SECTOR (ZOOM)</span>
+          </div>
+          <div class="context-menu-item" onclick="setContextEpicenter(); SFX.alarm();">
+            <span class="material-symbols-outlined text-red-500 text-sm">coronavirus</span>
+            <span>DESPLEGAR PACIENTE CERO AQUÍ</span>
+          </div>
+          <div class="context-menu-item" onclick="deployContextAirdrop(); SFX.cure();">
+            <span class="material-symbols-outlined text-yellow-400 text-sm">paragliding</span>
+            <span>LANZAR ANTÍDOTO AQUÍ</span>
+          </div>
+          <div class="context-menu-item" onclick="hideContextMenu();">
+            <span class="material-symbols-outlined text-slate-400 text-sm">close</span>
+            <span>CERRAR MENÚ</span>
           </div>
         </div>
 
-        <!-- LEAFLET MAP & BATTLEFIELD CANVAS CONTAINER -->
-        <div class="relative flex-1 w-full h-full" id="battlefield-wrapper">
-          
-          <!-- Leaflet Real Street Map -->
-          <div id="osm-map" class="absolute inset-0 w-full h-full z-10"></div>
-
-          <!-- CRT Scanlines Overlay -->
-          <div class="absolute inset-0 crt-overlay z-20 pointer-events-none opacity-45"></div>
-
-          <!-- Day/Night Ambient Filter -->
-          <div class="absolute inset-0 pointer-events-none z-20 transition-colors duration-700 bg-transparent" id="ambient-tint-layer"></div>
-
-          <!-- HTML5 CANVAS FOR METAL SLUG SPRITE SOLDIERS & ZOMBIES -->
-          <canvas class="absolute inset-0 w-full h-full pointer-events-none z-30" id="agent-canvas"></canvas>
-
-          <!-- SVG FOR SLUG SUPPLY CRATE PARACHUTE AIRDROP -->
-          <svg class="absolute inset-0 w-full h-full pointer-events-none z-30" id="slug-airdrop-svg">
-            <g id="slug-parachute-crate" opacity="0" transform="translate(0, 0)">
-              <!-- Parachute Dome -->
-              <path d="M -22,-24 Q 0,-50 22,-24 Z" fill="#f59e0b" stroke="#78350f" stroke-width="2"></path>
-              <line x1="-22" y1="-24" x2="-8" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
-              <line x1="22" y1="-24" x2="8" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
-              <line x1="0" y1="-44" x2="0" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
-              <!-- Wooden Military Crate -->
-              <rect x="-12" y="-6" width="24" height="16" fill="#854d0e" stroke="#fde047" stroke-width="2" rx="1"></rect>
-              <line x1="-12" y1="2" x2="12" y2="2" stroke="#5a3407" stroke-width="1.5"></line>
-              <text x="0" y="6" fill="#fef08a" font-family="'Russo One'" font-size="7" font-weight="bold" text-anchor="middle">CURE</text>
-            </g>
-          </svg>
-
-          <!-- Tactical Stencil Brackets -->
-          <div class="absolute top-2 left-2 text-slate-300 font-mono text-[9px] pointer-events-none z-30 bg-black/80 px-1.5 py-0.5 border border-slate-700 rounded">
-            ┌ SECTOR 01: SPONDYLUS E15
-          </div>
-          <div class="absolute top-2 right-12 text-slate-300 font-mono text-[9px] pointer-events-none z-30 bg-black/80 px-1.5 py-0.5 border border-slate-700 rounded">
-            SECTOR 02: JARAMIJÓ ┐
-          </div>
-          <div class="absolute bottom-2 left-2 text-slate-300 font-mono text-[9px] pointer-events-none z-30 bg-black/80 px-1.5 py-0.5 border border-slate-700 rounded">
-            └ SECTOR 03: SAN MATEO
-          </div>
-          <div class="absolute bottom-2 right-2 text-slate-300 font-mono text-[9px] pointer-events-none z-30 bg-black/80 px-1.5 py-0.5 border border-slate-700 rounded">
-            SECTOR 04: MONTECRISTI E30 ┘
-          </div>
-
-          <!-- Bottom Left Mission Target Lock Card -->
-          <div class="absolute bottom-3 left-3 bg-[#131b15]/95 backdrop-blur border-2 border-red-600 p-2.5 rounded shadow-2xl z-30 max-w-[220px]">
-            <div class="flex items-center justify-between font-heavy text-[10px] text-red-500 mb-0.5">
-              <span id="target-title">TARGET: MERCADO TARQUI</span>
-              <span class="bg-red-600 text-white px-1 font-stencil text-[8px] rounded pulse-alert">CRITICAL</span>
+        <!-- CINEMATIC OVERLAY FOR PATIENT ZERO TRANSFORMATION -->
+        <div id="cinematic-overlay" class="cinematic-overlay">
+          <div class="flex items-center justify-between bg-black/90 p-2.5 border border-red-500/80 rounded shadow-xl">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-red-600 animate-ping"></span>
+              <span class="font-stencil text-red-400 text-sm tracking-wider" id="cinematic-title">SATÉLITE MILITAR // DETECCIÓN BIOLÓGICA</span>
             </div>
-            <p class="text-slate-300 font-tactical text-[10px] leading-tight mb-2" id="target-details">
-              Epicentro cero. Transmisión violenta por mariscos infectados en muelle artesanal.
+            <span class="font-mono text-xs text-yellow-300 font-bold px-2 py-0.5 bg-yellow-950/80 border border-yellow-500/60 rounded" id="cinematic-stage-badge">FASE 1/3: SÍNTOMA</span>
+          </div>
+
+          <!-- Subtitle Banner -->
+          <div class="bg-black/95 p-3 border border-amber-500/70 rounded-lg shadow-2xl flex flex-col items-center text-center max-w-lg mx-auto">
+            <span class="text-amber-400 font-heavy text-xs" id="cinematic-location">MERCADO DE TARQUI</span>
+            <p class="text-white font-stencil text-sm sm:text-base tracking-wide mt-1 animate-pulse" id="cinematic-desc">
+              SUJETO EXPUESTO A TOXINA BIOLÓGICA... INICIA MUTACIÓN CELULAR
             </p>
-            <button class="btn-slug-red w-full py-1 text-white text-[10px] font-heavy rounded shadow" onclick="deployCureToTarget(); SFX.cure();">
-              🪂 DROP CURE CRATE
-            </button>
-          </div>
-
-          <!-- Top Right Legend Pill (Regular Army Soldier vs Metal Slug Zombie) -->
-          <div class="absolute top-3 right-12 bg-[#131b15]/95 backdrop-blur border-2 border-[#3c4c3e] px-2.5 py-1 rounded z-30 flex items-center gap-3 font-heavy text-[9px] shadow-lg">
-            <div class="flex items-center gap-1.5 text-emerald-400">
-              <span class="w-3.5 h-3.5 rounded bg-emerald-600 border border-emerald-300 flex items-center justify-center text-white text-[8px]">★</span>
-              SOLDIER
-            </div>
-            <div class="flex items-center gap-1.5 text-red-400">
-              <span class="w-3.5 h-3.5 rounded bg-red-800 border border-red-400 flex items-center justify-center text-white text-[8px] pulse-alert">☠</span>
-              ZOMBI
-            </div>
-            <div class="flex items-center gap-1.5 text-yellow-400">
-              <span class="w-3.5 h-3.5 rounded bg-amber-600 border border-yellow-300 flex items-center justify-center text-white text-[8px]">✚</span>
-              CURE
+            <div class="w-64 h-1.5 bg-slate-900 border border-slate-700 rounded-full mt-2 overflow-hidden">
+              <div id="cinematic-progress" class="h-full bg-gradient-to-r from-yellow-500 via-amber-500 to-red-600 transition-all duration-300" style="width: 30%;"></div>
             </div>
           </div>
         </div>
 
-        <!-- Radar Bottom Controls: Speed, Zoom & Re-center -->
-        <div class="h-10 bg-[#131b15] px-2 sm:px-3 border-t-2 border-[#3c4c3e] flex items-center justify-between z-30 shrink-0 gap-1 sm:gap-2">
-          <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-            <button class="btn-slug-red px-2 py-1 text-white text-[9px] sm:text-[10px] font-heavy rounded flex items-center gap-1" id="slug-btn-play" onclick="toggleSimPlay(); SFX.button();">
-              <span id="slug-play-text">⏸️ PAUSE</span>
+        <!-- FLOATING TARGET CHIP (BOTTOM-LEFT) -->
+        <div class="absolute bottom-3 left-3 bg-[#0d141b]/90 backdrop-blur border border-slate-700 p-2 rounded shadow-xl z-30 max-w-[200px]">
+          <div class="flex items-center justify-between text-[9px] font-heavy text-red-400 mb-0.5">
+            <span id="target-title" class="truncate">TARGET: TARQUI</span>
+            <span class="px-1 bg-red-950 text-red-400 rounded text-[8px]" id="target-status-badge">FOCO</span>
+          </div>
+          <p class="text-slate-400 text-[8px] leading-tight mb-1.5" id="target-details">
+            Puestos de mariscos y muelle artesanal.
+          </p>
+          <div class="flex gap-1">
+            <button class="flex-1 py-0.5 bg-red-950/80 border border-red-600/50 text-red-300 text-[8px] font-heavy rounded hover:bg-red-900 cursor-pointer" onclick="deployCureToTarget(); SFX.cure();">
+              🪂 CURA
             </button>
-            <div class="flex items-center bg-black/80 p-0.5 border border-[#3c4c3e] rounded">
-              <button class="btn-slug-green px-1.5 py-0.5 text-[9px] font-heavy rounded text-black" id="spd-btn-1" onclick="setSpeed(1); SFX.button();">1X</button>
-              <button class="btn-slug-dark px-1.5 py-0.5 text-[9px] font-heavy rounded text-slate-300" id="spd-btn-2" onclick="setSpeed(2); SFX.button();">2X</button>
-              <button class="btn-slug-dark px-1.5 py-0.5 text-[9px] font-heavy rounded text-slate-300" id="spd-btn-4" onclick="setSpeed(4); SFX.button();">4X 🚀</button>
-            </div>
-            
-            <!-- Quick Combat Zoom & General View Buttons -->
-            <button class="btn-slug-gold px-2 py-1 text-[9px] font-heavy rounded text-black flex items-center gap-1 shadow" onclick="zoomToCombat(); SFX.button();" title="Zoom in to street level combat">
-              <span class="material-symbols-outlined text-xs">zoom_in</span>
-              <span>ZOOM COMBATE (17X)</span>
-            </button>
-            <button class="btn-slug-dark px-2 py-1 text-[9px] font-heavy rounded text-slate-300 flex items-center gap-1" onclick="centerManta(); SFX.button();" title="Reset view to full Manta map">
-              <span class="material-symbols-outlined text-xs">zoom_out_map</span>
-              <span>GENERAL (13X)</span>
-            </button>
-            
-            <button class="btn-slug-dark p-1 rounded text-slate-300" onclick="resetSimulation(); SFX.button();" title="Reiniciar Misión">
-              <span class="material-symbols-outlined text-sm">restart_alt</span>
+            <button class="px-2 py-0.5 bg-yellow-950/80 border border-yellow-500/50 text-yellow-300 text-[8px] font-heavy rounded hover:bg-yellow-900 cursor-pointer" onclick="focusOnLandmark(state.activeEpicenter); SFX.button();">
+              🔍 ENFOCAR
             </button>
           </div>
+        </div>
 
-          <!-- Neo Geo Engine Telemetry & Dynamic Zoom Status -->
-          <div class="hidden sm:flex items-center gap-2 font-mono text-[9px]">
-            <span class="px-2 py-0.5 rounded font-heavy border border-[#3c4c3e] bg-black/90 shadow-inner" id="zoom-badge-indicator">
-              <span class="text-cyan-400">RADAR TÁCTICO [13X]</span>
+        <!-- FLOATING TOP-RIGHT LEGEND PILL -->
+        <div class="absolute top-2 right-2 bg-black/85 backdrop-blur border border-slate-800 px-2 py-0.5 rounded z-30 flex items-center gap-2 font-heavy text-[9px] shadow-lg">
+          <div class="flex items-center gap-1 text-emerald-400">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            HUMANO
+          </div>
+          <div class="flex items-center gap-1 text-amber-400">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            MORDIDO
+          </div>
+          <div class="flex items-center gap-1 text-red-400">
+            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+            ZOMBI
+          </div>
+          <div class="flex items-center gap-1 text-yellow-400">
+            <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+            INMUNE
+          </div>
+        </div>
+
+        <!-- FLOATING HINT (BOTTOM-RIGHT) -->
+        <div class="hidden sm:block absolute bottom-3 right-3 bg-black/80 backdrop-blur border border-slate-800 px-2 py-1 rounded text-slate-400 font-mono text-[9px] pointer-events-none z-30">
+          💡 Clic derecho: Menú táctico & Enfocar
+        </div>
+
+        <!-- PRE-SIMULATION PARAMETER MODAL (CLEAN & MINIMALIST) -->
+        <div id="pre-sim-panel" class="absolute inset-4 z-40 bg-[#0c1218]/95 backdrop-blur-md border border-amber-500/60 p-4 rounded-lg shadow-2xl flex flex-col justify-between overflow-y-auto">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-400 text-lg">tune</span>
+                <h2 class="arcade-title text-sm sm:text-base">PARAMETRIZACIÓN PRE-BROTE // MANTA ZERO</h2>
+              </div>
+              <button class="px-2 py-0.5 text-slate-400 hover:text-white text-xs cursor-pointer" onclick="togglePreSimPanel();">✕</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+              <!-- Col 1: Epicenter & Population -->
+              <div class="flex flex-col gap-2">
+                <div class="bg-black/60 p-2 border border-slate-800 rounded">
+                  <label class="text-amber-300 font-heavy block mb-1">1. LUGAR DE INICIO (PACIENTE CERO):</label>
+                  <select class="w-full bg-[#131b22] border border-slate-700 text-emerald-400 font-mono p-1 rounded cursor-pointer" id="init-epicenter-select">
+                    <option value="Tarqui">1. MERCADO CENTRAL DE TARQUI (PESQUERO ARTESANAL)</option>
+                    <option value="Murcielago">2. PLAYA MURCIÉLAGO / MALECÓN ESCÉNICO</option>
+                    <option value="PuertoManta">3. AV. MALECÓN Y PLAZA CÍVICA (ACCESO PUERTO)</option>
+                    <option value="Pescador">4. REDONDEL DE INEPACA (EL PESCADOR)</option>
+                    <option value="Jocay">5. BARRIO JOCAY / AV. 4 DE NOVIEMBRE</option>
+                    <option value="EloyAlfaro">6. PARROQUIA ELOY ALFARO / INTERBARRIAL</option>
+                    <option value="LosEsteros">7. COSTA AZUL / PUERTO LOS ESTEROS</option>
+                    <option value="Montecristi">8. NUDO E30 / MONTECRISTI</option>
+                    <option value="SanMateo">9. CALETA SAN MATEO (RUTA E15 SUR)</option>
+                    <option value="Jaramijo">10. PLAYA JARAMIJÓ (ESTE)</option>
+                  </select>
+                </div>
+
+                <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+                  <div class="flex justify-between">
+                    <span class="text-slate-300 font-heavy">2. POBLACIÓN EN CALLE:</span>
+                    <span class="font-mono text-emerald-400 font-bold" id="init-agents-val">95 TROPAS</span>
+                  </div>
+                  <input type="range" min="40" max="150" step="5" value="95" id="init-agents-slider" class="w-full accent-emerald-500" oninput="document.getElementById('init-agents-val').innerText = this.value + ' TROPAS';"/>
+                </div>
+
+                <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+                  <div class="flex justify-between">
+                    <span class="text-slate-300 font-heavy">3. TASA DE INMUNIDAD NATURAL:</span>
+                    <span class="font-mono text-yellow-400 font-bold" id="init-immune-val">8% INMUNES</span>
+                  </div>
+                  <input type="range" min="0" max="20" step="1" value="8" id="init-immune-slider" class="w-full accent-yellow-400" oninput="document.getElementById('init-immune-val').innerText = this.value + '% INMUNES';"/>
+                </div>
+              </div>
+
+              <!-- Col 2: Incubation & Limited Resources -->
+              <div class="flex flex-col gap-2">
+                <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+                  <div class="flex justify-between">
+                    <span class="text-slate-300 font-heavy">4. TIEMPO DE INCUBACIÓN (MORDIDO):</span>
+                    <span class="font-mono text-amber-400 font-bold" id="init-incub-val">8 SEGUNDOS</span>
+                  </div>
+                  <input type="range" min="3" max="20" step="1" value="8" id="init-incub-slider" class="w-full accent-amber-500" oninput="document.getElementById('init-incub-val').innerText = this.value + ' SEGUNDOS';"/>
+                </div>
+
+                <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1.5">
+                  <span class="text-amber-300 font-heavy">5. RECURSOS LIMITADOS:</span>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <span class="text-cyan-400 text-[9px] block">MUNICIÓN:</span>
+                      <select id="init-ammo-select" class="w-full bg-[#131b22] text-cyan-300 text-[10px] p-1 rounded border border-slate-700">
+                        <option value="400">400 BALAS (CRÍTICO)</option>
+                        <option value="800" selected>800 BALAS (ESTÁNDAR)</option>
+                        <option value="1500">1,500 BALAS (ABUNDANTE)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <span class="text-yellow-400 text-[9px] block">CAJAS ANTÍDOTO:</span>
+                      <select id="init-crates-select" class="w-full bg-[#131b22] text-yellow-300 text-[10px] p-1 rounded border border-slate-700">
+                        <option value="1">1 CAJA (EXTREMO)</option>
+                        <option value="3" selected>3 CAJAS (EQUILIBRADO)</option>
+                        <option value="6">6 CAJAS (REFORZADO)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3 bg-black/60 p-2 border border-slate-800 rounded">
+                  <label class="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" id="init-carnaval-check" checked class="accent-red-500"/>
+                    <span class="text-red-400">Carnaval</span>
+                  </label>
+                  <label class="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" id="init-night-check" class="accent-cyan-400"/>
+                    <span class="text-cyan-400">Noche</span>
+                  </label>
+                  <label class="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" id="init-cerco-check" class="accent-amber-400"/>
+                    <span class="text-amber-400">Cerco Vial</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
+            <span class="text-slate-400 font-mono text-[9px]">
+              * La simulación parte desde 0 con la animación del Paciente Cero mutando en Manta.
             </span>
-            <span class="text-emerald-400 font-bold">60.0 FPS</span>
+            <button class="btn-arcade-gold px-5 py-2 rounded text-[11px] flex items-center gap-1.5 cursor-pointer" onclick="confirmAndLaunchOutbreak(); SFX.alarm();">
+              <span class="material-symbols-outlined text-sm">coronavirus</span>
+              <span>INICIAR SIMULACIÓN DESDE CERO</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- 60-Day Epidemic Graph Styled as Metal Slug Mission Report -->
-      <div class="armor-plate rounded p-2 flex flex-col gap-1 border-2 border-[#3c4c3e]">
-        <div class="flex items-center justify-between text-[10px]">
-          <span class="font-heavy text-slug-gold flex items-center gap-1">
-            <span class="material-symbols-outlined text-sm text-slug-gold">analytics</span>
-            CURVA EPIDEMIOLÓGICA DE MANTA (PROYECCIÓN 60 DÍAS)
-          </span>
-          <div class="flex items-center gap-3 font-mono text-[9px]">
-            <span class="text-emerald-400 font-bold">■ SOBREVIVIENTES</span>
-            <span class="text-red-500 font-bold">■ MUTADOS</span>
-            <span class="text-yellow-400 font-bold">■ ANTÍDOTO</span>
+      <!-- Radar Bottom Control Dock (Clean & Minimalist) -->
+      <div class="h-9 bg-[#10171e]/90 px-3 border-t border-slate-800 flex items-center justify-between z-30 shrink-0 gap-2">
+        <div class="flex items-center gap-1.5">
+          <!-- Play / Pause -->
+          <button class="btn-arcade-red px-2 py-0.5 rounded text-[10px] flex items-center gap-1 cursor-pointer" id="slug-btn-play" onclick="toggleSimPlay(); SFX.button();">
+            <span id="slug-play-text">⏸️ PAUSE</span>
+          </button>
+          
+          <!-- Speed selector -->
+          <div class="flex items-center bg-black/60 p-0.5 border border-slate-800 rounded">
+            <button class="btn-arcade-green px-1.5 py-0.2 text-[9px] rounded text-white cursor-pointer" id="spd-btn-1" onclick="setSpeed(1); SFX.button();">1X</button>
+            <button class="btn-arcade-dark px-1.5 py-0.2 text-[9px] rounded text-slate-400 cursor-pointer" id="spd-btn-2" onclick="setSpeed(2); SFX.button();">2X</button>
+            <button class="btn-arcade-dark px-1.5 py-0.2 text-[9px] rounded text-slate-400 cursor-pointer" id="spd-btn-4" onclick="setSpeed(4); SFX.button();">4X 🚀</button>
           </div>
+
+          <!-- Zoom shortcuts -->
+          <button class="btn-arcade-gold px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer" onclick="zoomToCombat(); SFX.button();" title="Enfocar punto de combate">
+            <span class="material-symbols-outlined text-xs">center_focus_strong</span>
+            <span>ENFOCAR COMBATE (17X)</span>
+          </button>
+          <button class="btn-arcade-dark px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer" onclick="centerManta(); SFX.button();" title="Volver al mapa general">
+            <span class="material-symbols-outlined text-xs">zoom_out_map</span>
+            <span>VISTA GENERAL (13X)</span>
+          </button>
         </div>
-        <div class="w-full h-12 bg-black/90 border border-slate-800 rounded relative overflow-hidden">
-          <svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 600 70">
-            <!-- Grid Lines -->
-            <line stroke="#1a241b" stroke-width="1" x1="0" x2="600" y1="20" y2="20"></line>
-            <line stroke="#1a241b" stroke-width="1" x1="0" x2="600" y1="45" y2="45"></line>
-            <!-- Survivors Decay Line (Green) -->
-            <path d="M 0,10 Q 150,15 280,45 T 450,60 T 600,64" fill="none" stroke="#22c55e" stroke-width="2.5"></path>
-            <!-- Mutant Surge Curve (Red) -->
-            <path d="M 0,65 Q 160,62 260,35 T 360,12 T 480,48 T 600,65" fill="none" stroke="#dc2626" stroke-width="3"></path>
-            <!-- Antidote Deployment Curve (Yellow) -->
-            <path d="M 0,68 L 200,68 Q 320,66 420,40 T 520,18 T 600,10" fill="none" stroke="#eab308" stroke-dasharray="4,2" stroke-width="2.5"></path>
-            <!-- Day Marker -->
-            <line stroke="#facc15" stroke-dasharray="3,3" stroke-width="1.5" x1="140" x2="140" y1="0" y2="70"></line>
-            <text fill="#facc15" font-family="'Russo One'" font-size="7" font-weight="bold" x="145" y="14">HOY</text>
-          </svg>
+
+        <div class="flex items-center gap-2">
+          <button class="btn-arcade-dark px-2 py-0.5 text-[9px] rounded text-amber-300 flex items-center gap-1 cursor-pointer" onclick="togglePreSimPanel(); SFX.button();">
+            <span class="material-symbols-outlined text-xs">tune</span>
+            <span>PARÁMETROS</span>
+          </button>
+          <button class="p-1 rounded bg-black/60 border border-slate-800 text-slate-400 hover:text-white cursor-pointer" onclick="resetSimulation(); SFX.button();" title="Reiniciar">
+            <span class="material-symbols-outlined text-xs">restart_alt</span>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- RIGHT: SLUG ANTIDOTE LAB & TRANSMISSION CONTROLS (Cols 4) -->
-    <div class="lg:col-span-4 flex flex-col gap-2">
+    <!-- RIGHT: UNIFIED TACTICAL COMMAND DOCK (Cols 3 - Harmonious Tabbed Interface) -->
+    <div class="lg:col-span-3 h-full min-h-0 flex flex-col glass-panel rounded-lg overflow-hidden border border-slate-700/60">
       
-      <!-- PANEL 1: REGULAR ARMY RESEARCH LAB (ANTIDOTE CRATES) -->
-      <div class="armor-plate rounded p-2.5 flex flex-col gap-2 border-2 border-slug-gold shadow-xl">
-        <!-- Rivets -->
-        <div class="absolute top-1 left-1 armor-rivet"></div>
-        <div class="absolute top-1 right-1 armor-rivet"></div>
-
-        <div class="flex items-center justify-between pb-1 border-b border-[#4b5e4e]">
-          <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-slug-gold text-base">biotech</span>
-            <span class="font-heavy text-xs text-slug-gold">LABORATORIO DE ANTÍDOTO</span>
-          </div>
-          <span class="px-1.5 py-0.5 bg-yellow-950/80 text-yellow-300 border border-yellow-500/50 font-mono text-[9px] font-bold rounded">
-            SV-001 LAB
-          </span>
-        </div>
-
-        <!-- Antidote Progress Gauge -->
-        <div class="bg-black/85 p-2 border border-slate-800 rounded flex flex-col gap-1">
-          <div class="flex items-center justify-between">
-            <span class="text-slate-400 font-heavy text-[10px]">SÍNTESIS DE ANTÍDOTO:</span>
-            <span class="font-stencil text-base text-slug-gold" id="slug-cure-text">42.8%</span>
-          </div>
-          <!-- Segmented Industrial Bar -->
-          <div class="w-full h-4 bg-slate-950 border-2 border-[#3c4c3e] rounded-sm overflow-hidden p-0.5">
-            <div class="h-full bg-gradient-to-r from-yellow-500 via-amber-500 to-emerald-400 rounded-sm shadow-[0_0_10px_#f59e0b] transition-all duration-300" id="slug-cure-bar" style="width: 42.8%;"></div>
-          </div>
-          <div class="flex items-center justify-between text-[9px] text-slate-400 mt-0.5">
-            <span>DÍAS RESTANTES: <strong class="text-white" id="slug-cure-eta">24 DÍAS</strong></span>
-            <span class="text-red-400 font-bold">MUTACIÓN Z-04</span>
-          </div>
-        </div>
-
-        <!-- Priority Deployment Weapon Selector -->
-        <div class="flex flex-col gap-1">
-          <label class="text-slate-300 font-heavy text-[10px]">PRIORIDAD DE DISTRIBUCIÓN:</label>
-          <div class="grid grid-cols-3 gap-1">
-            <button class="btn-slug-green py-1 text-[9px] rounded text-black font-heavy" id="slug-prio-med" onclick="setDistributionPrio('med'); SFX.button();">
-              MÉDICOS
-            </button>
-            <button class="btn-slug-dark py-1 text-[9px] rounded text-slate-300 font-heavy" id="slug-prio-costa" onclick="setDistributionPrio('costa'); SFX.button();">
-              COSTA
-            </button>
-            <button class="btn-slug-dark py-1 text-[9px] rounded text-slate-300 font-heavy" id="slug-prio-peri" onclick="setDistributionPrio('peri'); SFX.button();">
-              PERIFERIA
-            </button>
-          </div>
-        </div>
-
-        <!-- Big Chunky Deploy Button -->
-        <button class="btn-slug-gold w-full py-2.5 text-black font-heavy text-xs rounded shadow-xl flex items-center justify-center gap-2" onclick="deployCureAirdrop(); SFX.cure();">
-          <span class="material-symbols-outlined text-base font-bold">paragliding</span>
-          <span>LANZAR ANTÍDOTO EN CUADRANTE</span>
+      <!-- Dock Tabs Header -->
+      <div class="flex border-b border-slate-800 bg-[#0d141b]/90 shrink-0">
+        <button id="tab-btn-logistica" class="flex-1 py-1.5 text-[10px] font-heavy text-amber-300 border-b-2 border-amber-400 bg-white/5 cursor-pointer" onclick="switchSidebarTab('logistica'); SFX.button();">
+          🧪 LOGÍSTICA
+        </button>
+        <button id="tab-btn-control" class="flex-1 py-1.5 text-[10px] font-heavy text-slate-400 border-b-2 border-transparent hover:text-white cursor-pointer" onclick="switchSidebarTab('control'); SFX.button();">
+          🎛️ CONTROL
+        </button>
+        <button id="tab-btn-sectores" class="flex-1 py-1.5 text-[10px] font-heavy text-slate-400 border-b-2 border-transparent hover:text-white cursor-pointer" onclick="switchSidebarTab('sectores'); SFX.button();">
+          📊 SECTORES
         </button>
       </div>
 
-      <!-- PANEL 2: TRANSMISSION VARIABLES CONSOLE -->
-      <div class="armor-plate rounded p-2.5 flex flex-col gap-2 border-2 border-[#3c4c3e]">
-        <div class="flex items-center justify-between pb-1 border-b border-[#3c4c3e]">
-          <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-emerald-400 text-base">tune</span>
-            <span class="font-heavy text-xs text-white">VARIABLES DE TRANSMISIÓN</span>
-          </div>
-          <span class="text-slate-400 font-mono text-[9px]">TACTICAL CFG</span>
-        </div>
-
-        <!-- Day/Night & Carnaval Heavy Toggle Switches -->
-        <div class="grid grid-cols-2 gap-1.5">
-          <!-- Sol / Luna Switch -->
-          <button class="btn-slug-dark p-2 rounded flex items-center justify-between text-left" id="slug-btn-night" onclick="toggleNightCycle(); SFX.button();">
-            <div class="flex flex-col">
-              <span class="font-heavy text-[10px] text-yellow-400" id="slug-lbl-night">MODO DÍA</span>
-              <span class="text-slate-400 font-mono text-[9px]">Luz Solar</span>
+      <!-- Dock Content Area -->
+      <div class="flex-1 min-h-0 overflow-y-auto p-2.5 flex flex-col gap-2.5">
+        
+        <!-- TAB 1: LOGÍSTICA & ANTÍDOTO -->
+        <div id="tab-content-logistica" class="flex flex-col gap-2.5">
+          <!-- Cure Synthesis Progress -->
+          <div class="bg-black/60 p-2.5 border border-slate-800 rounded-lg flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400 font-heavy text-[10px]">SÍNTESIS DE ANTÍDOTO:</span>
+              <span class="font-led text-sm text-yellow-300 font-bold" id="slug-cure-text">0.0%</span>
             </div>
-            <span class="material-symbols-outlined text-yellow-400 text-lg" id="slug-icon-night">wb_sunny</span>
-          </button>
-
-          <!-- Carnaval Alert Switch -->
-          <button class="btn-slug-red p-2 rounded flex items-center justify-between text-left" id="slug-btn-carnaval" onclick="toggleCarnaval(); SFX.alarm();">
-            <div class="flex flex-col">
-              <span class="font-heavy text-[10px] text-white" id="slug-lbl-carnaval">CARNAVAL: ON</span>
-              <span class="text-red-200 font-mono text-[9px]">+300% Multitud</span>
+            <!-- Progress Bar -->
+            <div class="w-full h-3 bg-slate-900 border border-slate-700 rounded-sm overflow-hidden p-0.5">
+              <div class="h-full bg-gradient-to-r from-yellow-500 via-amber-500 to-emerald-400 rounded-sm transition-all duration-300" id="slug-cure-bar" style="width: 0%;"></div>
             </div>
-            <span class="material-symbols-outlined text-white text-lg animate-bounce" id="slug-icon-carnaval">festival</span>
+            <div class="flex justify-between text-[9px] text-slate-400">
+              <span>ETA: <strong class="text-white" id="slug-cure-eta">PRODUCIENDO...</strong></span>
+              <span class="text-emerald-400 font-bold" id="slug-cure-batches">+1 CAJA AL 100%</span>
+            </div>
+          </div>
+
+          <!-- Stock Telemetry -->
+          <div class="grid grid-cols-2 gap-1.5 bg-black/60 p-2 border border-slate-800 rounded-lg text-[10px]">
+            <div>
+              <span class="text-cyan-400 text-[9px] block">MUNICIÓN RESTANTE:</span>
+              <span class="font-mono text-white font-bold" id="lbl-ammo-stock">800 / 800</span>
+            </div>
+            <div>
+              <span class="text-yellow-400 text-[9px] block">CAJAS DE ANTÍDOTO:</span>
+              <span class="font-mono text-yellow-300 font-bold" id="lbl-crate-stock">03 CAJAS</span>
+            </div>
+          </div>
+
+          <!-- Distribution Priority -->
+          <div class="flex flex-col gap-1">
+            <label class="text-slate-400 text-[9px] font-heavy">PRIORIDAD DE DISTRIBUCIÓN:</label>
+            <div class="grid grid-cols-3 gap-1">
+              <button class="btn-arcade-green py-1 text-[9px] rounded cursor-pointer" id="slug-prio-med" onclick="setDistributionPrio('med'); SFX.button();">MÉDICOS</button>
+              <button class="btn-arcade-dark py-1 text-[9px] rounded text-slate-400 cursor-pointer" id="slug-prio-costa" onclick="setDistributionPrio('costa'); SFX.button();">COSTA</button>
+              <button class="btn-arcade-dark py-1 text-[9px] rounded text-slate-400 cursor-pointer" id="slug-prio-peri" onclick="setDistributionPrio('peri'); SFX.button();">PERIFERIA</button>
+            </div>
+          </div>
+
+          <!-- Deploy Cure Button -->
+          <button class="btn-arcade-gold w-full py-2.5 rounded text-[11px] shadow-lg flex items-center justify-center gap-1.5 cursor-pointer mt-1" onclick="deployCureAirdrop();">
+            <span class="material-symbols-outlined text-sm">paragliding</span>
+            <span>LANZAR ANTÍDOTO (GASTA 1 CAJA)</span>
           </button>
         </div>
 
-        <!-- Epicenter Selector Dial -->
-        <div class="flex flex-col gap-1">
-          <label class="text-slug-gold font-heavy text-[10px]">FOCO DE INICIO (EPICENTRO ZERO):</label>
-          <select class="w-full bg-black/90 border-2 border-[#4b5e4e] text-emerald-400 font-mono text-[11px] p-1.5 rounded focus:outline-none focus:border-yellow-400 cursor-pointer" id="slug-select-epicenter" onchange="changeEpicenter(this.value); SFX.button();">
-            <option value="Tarqui">1. MERCADO CENTRAL DE TARQUI (PESQUERO)</option>
-            <option value="Murcielago">2. PLAYA MURCIÉLAGO / MALECÓN ESCÉNICO</option>
-            <option value="Jocay">3. BARRIO JOCAY / AV. 4 DE NOVIEMBRE</option>
-            <option value="EloyAlfaro">4. ELOY ALFARO / VÍA INTERBARRIAL</option>
-            <option value="SanMateo">5. CALETA SAN MATEO (RUTA E15 SUR)</option>
-            <option value="Montecristi">6. NUDO E30 / MONTECRISTI</option>
-            <option value="LosEsteros">7. COSTA AZUL / PUERTO LOS ESTEROS</option>
-            <option value="Jaramijo">8. PLAYA JARAMIJÓ (ESTE)</option>
-          </select>
+        <!-- TAB 2: VARIABLES DE TRANSMISIÓN & ENTORNO -->
+        <div id="tab-content-control" class="hidden flex flex-col gap-2.5">
+          <!-- Day/Night & Carnaval Switches -->
+          <div class="grid grid-cols-2 gap-1.5">
+            <button class="btn-arcade-dark p-2 rounded flex items-center justify-between cursor-pointer" id="slug-btn-night" onclick="toggleNightCycle(); SFX.button();">
+              <div class="flex flex-col text-left">
+                <span class="font-heavy text-[10px] text-yellow-400" id="slug-lbl-night">MODO DÍA</span>
+                <span class="text-slate-500 font-mono text-[8px]">Luz Solar</span>
+              </div>
+              <span class="material-symbols-outlined text-yellow-400 text-base" id="slug-icon-night">wb_sunny</span>
+            </button>
+            <button class="btn-arcade-red p-2 rounded flex items-center justify-between cursor-pointer" id="slug-btn-carnaval" onclick="toggleCarnaval(); SFX.alarm();">
+              <div class="flex flex-col text-left">
+                <span class="font-heavy text-[10px] text-white" id="slug-lbl-carnaval">CARNAVAL: ON</span>
+                <span class="text-red-200 font-mono text-[8px]">+300% Multitud</span>
+              </div>
+              <span class="material-symbols-outlined text-white text-base animate-bounce" id="slug-icon-carnaval">festival</span>
+            </button>
+          </div>
+
+          <!-- Epicenter Selector -->
+          <div class="flex flex-col gap-1">
+            <label class="text-slate-400 text-[9px] font-heavy">EPICENTRO ACTIVO:</label>
+            <select class="w-full bg-[#131b22] border border-slate-700 text-emerald-400 font-mono text-[10px] p-1.5 rounded cursor-pointer" id="slug-select-epicenter" onchange="changeEpicenter(this.value); SFX.button();">
+              <option value="Tarqui">1. MERCADO CENTRAL DE TARQUI</option>
+              <option value="Murcielago">2. PLAYA MURCIÉLAGO</option>
+              <option value="PuertoManta">3. AV. MALECÓN / ACCESO PUERTO</option>
+              <option value="Pescador">4. REDONDEL DE INEPACA</option>
+              <option value="Jocay">5. BARRIO JOCAY</option>
+              <option value="EloyAlfaro">6. ELOY ALFARO</option>
+              <option value="SanMateo">7. CALETA SAN MATEO</option>
+              <option value="Montecristi">8. NUDO E30 MONTECRISTI</option>
+              <option value="LosEsteros">9. COSTA AZUL / LOS ESTEROS</option>
+              <option value="Jaramijo">10. PLAYA JARAMIJÓ</option>
+            </select>
+          </div>
+
+          <!-- Incubation Slider -->
+          <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+            <div class="flex justify-between">
+              <span class="text-slate-400 text-[9px] font-heavy">INCUBACIÓN MORDIDO:</span>
+              <span class="font-mono text-amber-400 font-bold" id="live-incub-text">8s</span>
+            </div>
+            <input class="w-full accent-amber-500 bg-slate-800 h-1.5 rounded cursor-pointer" id="live-incub-slider" max="25" min="3" oninput="setIncubationTime(this.value)" step="1" type="range" value="8"/>
+          </div>
+
+          <!-- Quarantine Roadblock Button -->
+          <div class="flex items-center justify-between bg-black/60 p-2 border border-slate-800 rounded">
+            <div class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-amber-500 text-sm">fence</span>
+              <span class="text-slate-300 text-[10px] font-heavy">CERCO VIAL E15 / E30</span>
+            </div>
+            <button class="btn-arcade-dark px-2 py-0.5 text-[9px] rounded text-slate-400 cursor-pointer" id="slug-btn-cerco" onclick="toggleCercoVial(); SFX.button();">
+              DESACTIVADO
+            </button>
+          </div>
         </div>
 
-        <!-- Patient Zero Ammo Slider -->
-        <div class="bg-black/80 p-2 border border-slate-800 rounded flex flex-col gap-1">
-          <div class="flex items-center justify-between">
-            <span class="text-slate-400 font-heavy text-[10px]">PACIENTES CERO (INICIALES):</span>
-            <span class="font-stencil text-sm text-red-500" id="slug-patients-val">120 CASOS</span>
+        <!-- TAB 3: SECTORES & CURVA EPIDEMIOLÓGICA -->
+        <div id="tab-content-sectores" class="hidden flex flex-col gap-2.5">
+          <!-- Parroquia Contagion Bars -->
+          <div class="flex flex-col gap-1.5 bg-black/60 p-2.5 border border-slate-800 rounded-lg">
+            <span class="text-slate-400 text-[9px] font-heavy border-b border-slate-800 pb-1">
+              CONTENCIÓN POR PARROQUIA (EN VIVO)
+            </span>
+            <!-- Tarqui -->
+            <div class="flex flex-col gap-0.5">
+              <div class="flex justify-between text-[8px] font-heavy">
+                <span class="text-red-400">TARQUI</span>
+                <span class="text-red-400 font-mono" id="bar-tarqui-text">0% INFECTED</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div class="bg-red-500 h-full transition-all duration-300" id="bar-tarqui" style="width: 0%;"></div>
+              </div>
+            </div>
+            <!-- Murciélago -->
+            <div class="flex flex-col gap-0.5">
+              <div class="flex justify-between text-[8px] font-heavy">
+                <span class="text-emerald-400">MURCIÉLAGO</span>
+                <span class="text-emerald-400 font-mono" id="bar-murcielago-text">0% INFECTED</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div class="bg-emerald-500 h-full transition-all duration-300" id="bar-murcielago" style="width: 0%;"></div>
+              </div>
+            </div>
+            <!-- Eloy Alfaro -->
+            <div class="flex flex-col gap-0.5">
+              <div class="flex justify-between text-[8px] font-heavy">
+                <span class="text-yellow-400">ELOY ALFARO</span>
+                <span class="text-yellow-400 font-mono" id="bar-eloy-text">0% INFECTED</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div class="bg-yellow-500 h-full transition-all duration-300" id="bar-eloy" style="width: 0%;"></div>
+              </div>
+            </div>
+            <!-- Montecristi -->
+            <div class="flex flex-col gap-0.5">
+              <div class="flex justify-between text-[8px] font-heavy">
+                <span class="text-cyan-300">MONTECRISTI [E30]</span>
+                <span class="text-cyan-300 font-mono" id="bar-montecristi-text">0% INFECTED</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div class="bg-cyan-500 h-full transition-all duration-300" id="bar-montecristi" style="width: 0%;"></div>
+              </div>
+            </div>
           </div>
-          <input class="w-full accent-red-600 bg-slate-800 h-2 rounded cursor-pointer" id="slug-patients-slider" max="500" min="5" oninput="updateInitialPatients(this.value)" step="5" type="range" value="120"/>
-          <div class="flex justify-between text-[9px] text-slate-500 font-mono">
-            <span>05 CASOS</span>
-            <span>VECTOR EXPONENCIAL</span>
-            <span>500 CRÍTICO</span>
-          </div>
-        </div>
 
-        <!-- Quarantine Roadblock Button (E15 / E30) -->
-        <div class="flex items-center justify-between bg-black/80 p-1.5 border border-slate-800 rounded">
-          <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-amber-500 text-sm">fence</span>
-            <span class="font-heavy text-[10px] text-slate-300">CERCO MILITAR E15 / E30</span>
-          </div>
-          <button class="btn-slug-dark px-2 py-0.5 text-[9px] rounded text-slate-400" id="slug-btn-cerco" onclick="toggleCercoVial(); SFX.button();">
-            DESACTIVADO
-          </button>
-        </div>
-      </div>
-
-      <!-- PARROQUIA BOSS HEALTH / DEFENSE BARS -->
-      <div class="armor-plate rounded p-2 flex flex-col gap-1.5 border-2 border-[#3c4c3e]">
-        <span class="font-heavy text-[10px] text-slug-gold border-b border-[#3c4c3e] pb-1 flex items-center gap-1">
-          <span class="material-symbols-outlined text-xs text-slug-gold">flag</span>
-          ESTADO DE CONTENCIÓN POR SECTOR
-        </span>
-        <!-- Tarqui -->
-        <div class="flex flex-col gap-0.5">
-          <div class="flex justify-between text-[9px] font-heavy">
-            <span class="text-red-400">PARR. TARQUI</span>
-            <span class="text-red-400 font-stencil" id="bar-tarqui-text">88% INFECTED</span>
-          </div>
-          <div class="w-full bg-black h-1.5 rounded overflow-hidden border border-red-950">
-            <div class="bg-red-600 h-full shadow-[0_0_6px_#dc2626]" id="bar-tarqui" style="width: 88%;"></div>
-          </div>
-        </div>
-        <!-- Murciélago -->
-        <div class="flex flex-col gap-0.5">
-          <div class="flex justify-between text-[9px] font-heavy">
-            <span class="text-emerald-400">MURCIÉLAGO / MALECÓN</span>
-            <span class="text-emerald-400 font-stencil" id="bar-murcielago-text">34% DEFENDED</span>
-          </div>
-          <div class="w-full bg-black h-1.5 rounded overflow-hidden border border-emerald-950">
-            <div class="bg-emerald-500 h-full shadow-[0_0_6px_#10b981]" id="bar-murcielago" style="width: 34%;"></div>
-          </div>
-        </div>
-        <!-- Eloy Alfaro -->
-        <div class="flex flex-col gap-0.5">
-          <div class="flex justify-between text-[9px] font-heavy">
-            <span class="text-yellow-400">ELOY ALFARO</span>
-            <span class="text-yellow-400 font-stencil" id="bar-eloy-text">52% CONTESTED</span>
-          </div>
-          <div class="w-full bg-black h-1.5 rounded overflow-hidden border border-yellow-950">
-            <div class="bg-yellow-500 h-full shadow-[0_0_6px_#f59e0b]" id="bar-eloy" style="width: 52%;"></div>
-          </div>
-        </div>
-        <!-- Montecristi -->
-        <div class="flex flex-col gap-0.5">
-          <div class="flex justify-between text-[9px] font-heavy">
-            <span class="text-emerald-300">MONTECRISTI [E30]</span>
-            <span class="text-emerald-300 font-stencil" id="bar-montecristi-text">14% SECURE</span>
-          </div>
-          <div class="w-full bg-black h-1.5 rounded overflow-hidden border border-emerald-950">
-            <div class="bg-emerald-400 h-full shadow-[0_0_6px_#34d399]" id="bar-montecristi" style="width: 14%;"></div>
+          <!-- SEIR Dynamic Graph -->
+          <div class="flex flex-col gap-1 bg-black/60 p-2 border border-slate-800 rounded-lg">
+            <div class="flex justify-between text-[8px] text-slate-400">
+              <span>CURVA SEIR (60 DÍAS)</span>
+              <div class="flex gap-2">
+                <span class="text-emerald-400">■ S</span>
+                <span class="text-amber-400">■ E</span>
+                <span class="text-red-500">■ I</span>
+                <span class="text-yellow-400">■ R</span>
+              </div>
+            </div>
+            <div class="w-full h-14 bg-black border border-slate-900 rounded relative overflow-hidden">
+              <svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 600 70">
+                <line stroke="#1e293b" stroke-width="1" x1="0" x2="600" y1="20" y2="20"></line>
+                <line stroke="#1e293b" stroke-width="1" x1="0" x2="600" y1="45" y2="45"></line>
+                <path id="curve-susceptible" d="M 0,10 L 600,10" fill="none" stroke="#22c55e" stroke-width="2"></path>
+                <path id="curve-bitten" d="M 0,68 L 600,68" fill="none" stroke="#f59e0b" stroke-width="2"></path>
+                <path id="curve-infected" d="M 0,68 L 600,68" fill="none" stroke="#dc2626" stroke-width="2.5"></path>
+                <path id="curve-immune" d="M 0,60 L 600,60" fill="none" stroke="#eab308" stroke-dasharray="4,2" stroke-width="1.8"></path>
+                <line id="day-marker-line" stroke="#facc15" stroke-dasharray="3,3" stroke-width="1.5" x1="10" x2="10" y1="0" y2="70"></line>
+                <text id="day-marker-text" fill="#facc15" font-family="'JetBrains Mono'" font-size="7" font-weight="bold" x="14" y="14">DÍA 0</text>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </main>
 
-  <!-- 4. MAIN SIMULATION & COMBAT ENGINE -->
+  <!-- Sidebar Tab Navigation Script -->
+  <script>
+    function switchSidebarTab(tabName) {
+      ['logistica', 'control', 'sectores'].forEach(t => {
+        const content = document.getElementById(`tab-content-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (content) {
+          if (t === tabName) content.classList.remove('hidden');
+          else content.classList.add('hidden');
+        }
+        if (btn) {
+          if (t === tabName) {
+            btn.className = 'flex-1 py-1.5 text-[10px] font-heavy text-amber-300 border-b-2 border-amber-400 bg-white/5 cursor-pointer';
+          } else {
+            btn.className = 'flex-1 py-1.5 text-[10px] font-heavy text-slate-400 border-b-2 border-transparent hover:text-white cursor-pointer';
+          }
+        }
+      });
+    }
+  </script>
+
+  <!-- MAIN SIMULATION ENGINE -->
   <script src="js/engine.js"></script>
 </body>
 </html>

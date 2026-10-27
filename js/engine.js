@@ -1,5 +1,5 @@
 // ==========================================================================
-// MANTA OUTBREAK // MAIN SIMULATION & COMBAT ENGINE
+// MANTA OUTBREAK // MAIN SIMULATION & COMBAT ENGINE (4 STATES + REAL RESOURCES)
 // ==========================================================================
 
 (function initMetalSlugEngine() {
@@ -10,13 +10,15 @@
 
   // Simulation Game State
   const state = {
+    hasStarted: false,
+    isTransforming: false,
     isRunning: true,
     speed: 1,
-    score: 34800,
+    score: 0,
     credits: 4,
-    day: 14,
-    hour: 18,
-    minute: 40,
+    day: 0,
+    hour: 0,
+    minute: 0,
     isNight: false,
     isCarnaval: true,
     cercoVial: false,
@@ -24,14 +26,30 @@
     currentScenario: 'A',
     distributionPriority: 'med',
     tileLayerName: 'dark',
-    cureProgress: 42.8,
-    cureEtaDays: 24,
+    cureProgress: 0.0,
+    cureEtaDays: 30,
+    
+    // Census & SEIR Model
     totalPop: 271145,
-    healthy: 267820,
-    infected: 3240,
-    recovered: 85,
-    deaths: 120,
+    healthy: 249453,
+    bitten: 0,
+    infected: 0,
+    immune: 21692,
+    recovered: 0,
+    deaths: 0,
     r0: 3.82,
+
+    // Limited Resources
+    ammo: 800,
+    maxAmmo: 800,
+    cureCrates: 3,
+
+    // Configurable Parameters
+    agentCount: 95,
+    immunityRate: 0.08,
+    incubationSeconds: 8.0,
+
+    // Entities & VFX
     agents: [],
     particles: []
   };
@@ -159,13 +177,13 @@
     Object.keys(config.nodes).forEach(key => {
       const node = config.nodes[key];
       const isEpicenter = (key === state.activeEpicenter);
-      const radius = isEpicenter ? 900 : 450;
+      const radius = isEpicenter ? 600 : 300;
       const circle = L.circle([node.lat, node.lng], {
         color: '#dc2626',
         fillColor: '#ef4444',
-        fillOpacity: isEpicenter ? 0.35 : 0.15,
+        fillOpacity: isEpicenter ? 0.25 : 0.08,
         radius: radius,
-        weight: 2,
+        weight: 1.5,
         dashArray: '4, 4'
       }).addTo(map);
       contagionCircles[key] = circle;
@@ -222,10 +240,98 @@
   map.on('zoomend', updateZoomTelemetry);
   updateZoomTelemetry();
 
-  // 2. CANVAS SETUP & AGENT INITIALIZATION
+  // 2. RIGHT-CLICK CONTEXT MENU HANDLING
+  let contextCoordinates = null;
+  const contextMenuEl = document.getElementById('map-context-menu');
+
+  map.on('contextmenu', function(e) {
+    if (L.DomEvent) L.DomEvent.preventDefault(e);
+    contextCoordinates = e.latlng;
+
+    if (contextMenuEl) {
+      contextMenuEl.style.display = 'block';
+      const pt = e.containerPoint;
+      const maxX = map.getContainer().clientWidth - 200;
+      const maxY = map.getContainer().clientHeight - 130;
+      contextMenuEl.style.left = `${Math.min(pt.x, maxX)}px`;
+      contextMenuEl.style.top = `${Math.min(pt.y, maxY)}px`;
+    }
+    sfx.button();
+  });
+
+  window.hideContextMenu = function() {
+    if (contextMenuEl) contextMenuEl.style.display = 'none';
+  };
+
+  map.on('click', window.hideContextMenu);
+  map.on('movestart', window.hideContextMenu);
+
+  window.focusOnCoordinates = function() {
+    if (!contextCoordinates) return;
+    window.hideContextMenu();
+    map.flyTo(contextCoordinates, 17, { duration: 1.5, easeLinearity: 0.25 });
+  };
+
+  window.setContextEpicenter = function() {
+    if (!contextCoordinates) return;
+    window.hideContextMenu();
+
+    if (!state.hasStarted) {
+      // Find nearest node or set custom
+      let nearestKey = 'Tarqui';
+      let minDist = 99999;
+      Object.keys(config.nodes).forEach(k => {
+        const d = config.haversine([contextCoordinates.lat, contextCoordinates.lng], [config.nodes[k].lat, config.nodes[k].lng]);
+        if (d < minDist) {
+          minDist = d;
+          nearestKey = k;
+        }
+      });
+      state.activeEpicenter = nearestKey;
+      inspectLandmark(nearestKey);
+      window.confirmAndLaunchOutbreak();
+    } else {
+      // Spawn extra outbreak at point
+      spawnZombieAt(contextCoordinates.lat, contextCoordinates.lng);
+    }
+  };
+
+  window.deployContextAirdrop = function() {
+    if (!contextCoordinates) return;
+    window.hideContextMenu();
+    window.deployCureAirdrop(contextCoordinates);
+  };
+
+  function spawnZombieAt(lat, lng) {
+    let nearestAgent = null;
+    let minDist = 999999;
+    state.agents.forEach(a => {
+      const d = Math.hypot(a.lat - lat, a.lng - lng);
+      if (d < minDist) {
+        minDist = d;
+        nearestAgent = a;
+      }
+    });
+    if (nearestAgent) {
+      nearestAgent.type = 'infected';
+      nearestAgent.glitchTimer = 30;
+      sfx.transformRoar();
+      state.particles.push({
+        type: 'mutation_burst',
+        x: nearestAgent.screenX,
+        y: nearestAgent.screenY,
+        color: '#dc2626',
+        life: 1.0,
+        decay: 0.03
+      });
+      state.infected += 1;
+      updateHUD();
+    }
+  }
+
+  // 3. CANVAS SETUP & AGENT INITIALIZATION
   const canvas = document.getElementById('agent-canvas');
   const ctx = canvas.getContext('2d');
-  const TOTAL_AGENTS = 115;
 
   function resizeCanvas() {
     const rect = map.getContainer().getBoundingClientRect();
@@ -234,32 +340,50 @@
   }
   resizeCanvas();
   map.on('resize', resizeCanvas);
+  window.addEventListener('resize', () => {
+    map.invalidateSize();
+    resizeCanvas();
+  });
+  setTimeout(() => {
+    map.invalidateSize();
+    resizeCanvas();
+  }, 300);
 
+  // Initialize Agents: starts with 0 infected, all humans + immune %
   function initAgents() {
     state.agents = [];
     state.particles = [];
     const rKeys = Object.keys(config.routePairs);
+    const count = state.agentCount;
+    const HERO_KEYS = ['marco', 'tarma', 'eri', 'fio', 'clark', 'ralf'];
 
-    for (let i = 0; i < TOTAL_AGENTS; i++) {
+    for (let i = 0; i < count; i++) {
       const rKey = rKeys[Math.floor(Math.random() * rKeys.length)];
       const rd = routeData[rKey];
       const posMeters = Math.random() * rd.totalDist;
       const dir = Math.random() < 0.5 ? 1 : -1;
-      const isInfected = (rKey.includes('Tarqui') && Math.random() < 0.6) || (Math.random() < 0.22);
+      
+      // Determine if naturally immune
+      const isImmune = (Math.random() < state.immunityRate);
+      const agentType = isImmune ? 'immune' : 'human';
+      const heroId = HERO_KEYS[i % HERO_KEYS.length];
 
       state.agents.push({
         id: i,
+        heroId: heroId,
+        type: agentType,
         routeKey: rKey,
         posMeters: posMeters,
         dir: dir,
-        speedMps: 13.0 + Math.random() * 11.0,
-        lateralOffsetMeters: (Math.random() - 0.5) * 5.5,
+        speedMps: 11.0 + Math.random() * 8.0,
+        lateralOffsetMeters: (Math.random() - 0.5) * 5.0,
         lat: 0,
         lng: 0,
         screenX: 0,
         screenY: 0,
         facing: 1,
-        isInfected: isInfected,
+        incubationTimer: 0,
+        incubationMax: state.incubationSeconds * 60,
         glitchTimer: 0,
         animBob: Math.random() * Math.PI * 2,
         animFrame: 0,
@@ -269,18 +393,196 @@
         targetZombiePos: null,
         vomitCooldown: Math.floor(Math.random() * 20),
         isVomiting: false,
-        cureTimer: 0
+        cureTimer: 0,
+        isPatientZero: false
       });
     }
+
+    // Calculate initial counts
+    const immCount = Math.round(state.totalPop * state.immunityRate);
+    state.immune = immCount;
+    state.healthy = state.totalPop - immCount;
+    state.bitten = 0;
+    state.infected = 0;
+    state.recovered = 0;
+    state.deaths = 0;
+    updateHUD();
   }
   initAgents();
 
-  // 3. ANIMATION & COMBAT LOOP (60 FPS)
+  // 4. PATIENT ZERO GRADUAL TRANSFORMATION CINEMATIC
+  window.startOutbreakSequence = function(epKey) {
+    state.activeEpicenter = epKey || state.activeEpicenter;
+    const epNode = config.nodes[state.activeEpicenter] || config.nodes.Tarqui;
+
+    // Pick agent closest to epicenter node
+    let targetAgent = null;
+    let minD = 999999;
+    state.agents.forEach(a => {
+      if (a.routeKey.includes(state.activeEpicenter)) {
+        targetAgent = a;
+      }
+    });
+    if (!targetAgent && state.agents.length > 0) targetAgent = state.agents[0];
+
+    if (!targetAgent) return;
+    targetAgent.isPatientZero = true;
+    targetAgent.type = 'human';
+
+    // Camera fly to patient zero
+    map.flyTo([epNode.lat, epNode.lng], 17, { duration: 1.5 });
+
+    state.isTransforming = true;
+    const overlay = document.getElementById('cinematic-overlay');
+    const title = document.getElementById('cinematic-title');
+    const badge = document.getElementById('cinematic-stage-badge');
+    const loc = document.getElementById('cinematic-location');
+    const desc = document.getElementById('cinematic-desc');
+    const prog = document.getElementById('cinematic-progress');
+
+    if (overlay) overlay.classList.add('active');
+    if (loc) loc.innerText = `SECTOR ZERO: ${epNode.name.toUpperCase()}`;
+
+    // STAGE 1: SÍNTOMA (0s - 1.6s)
+    if (title) title.innerText = "SATÉLITE REGULAR ARMY // OBJETIVO BLOQUEADO";
+    if (badge) badge.innerText = "FASE 1/3: SÍNTOMA CERO";
+    if (desc) desc.innerText = "SUJETO LOCAL EXPUESTO A BIOTOXINA DE ORIGEN MARINO...";
+    if (prog) prog.style.width = "25%";
+    targetAgent.alertTimer = 80;
+    sfx.cough();
+
+    // STAGE 2: INCUBACIÓN Y MUTACIÓN CELULAR (1.6s - 3.4s)
+    setTimeout(() => {
+      if (badge) badge.innerText = "FASE 2/3: INCUBACIÓN VIRAL (MORDIDO)";
+      if (desc) desc.innerText = "COLAPSO CELULAR: VENAS OSCURAS Y RIGIDEZ EXTREMA...";
+      if (prog) prog.style.width = "65%";
+      targetAgent.type = 'bitten';
+      targetAgent.glitchTimer = 35;
+      sfx.alarm();
+
+      for (let k = 0; k < 6; k++) {
+        state.particles.push({
+          type: 'bile',
+          x: targetAgent.screenX,
+          y: targetAgent.screenY - 3,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: -1.0 - Math.random(),
+          size: 2.2,
+          color: '#f59e0b',
+          life: 1.0,
+          decay: 0.04
+        });
+      }
+    }, 1600);
+
+    // STAGE 3: MUTACIÓN COMPLETA (3.4s - 5.0s)
+    setTimeout(() => {
+      if (badge) badge.innerText = "FASE 3/3: TRANSFORMACIÓN COMPLETA";
+      if (desc) desc.innerText = "¡MUTACIÓN COMPLETA! EL PACIENTE CERO DESPIERTA COMO ZOMBI.";
+      if (prog) prog.style.width = "100%";
+
+      targetAgent.type = 'infected';
+      targetAgent.glitchTimer = 45;
+      sfx.transformRoar();
+
+      // Mutation burst VFX
+      for (let k = 0; k < 12; k++) {
+        state.particles.push({
+          type: 'bile',
+          x: targetAgent.screenX,
+          y: targetAgent.screenY - 3,
+          vx: (Math.random() - 0.5) * 3.5,
+          vy: -1.5 - Math.random() * 2.5,
+          size: 3.5,
+          color: (k % 2 === 0) ? '#84cc16' : '#dc2626',
+          life: 1.0,
+          decay: 0.03
+        });
+      }
+      state.particles.push({
+        type: 'mutation_burst',
+        x: targetAgent.screenX,
+        y: targetAgent.screenY - 3,
+        color: '#dc2626',
+        life: 1.0,
+        decay: 0.03
+      });
+
+      state.hasStarted = true;
+      state.infected = 1;
+      state.healthy = state.totalPop - state.immune - 1;
+      updateHUD();
+      updateNewsTicker();
+
+      const simStatus = document.getElementById('slug-sim-status');
+      if (simStatus) {
+        simStatus.innerText = 'BROTE ACTIVO';
+        simStatus.className = 'text-red-500 pulse-alert';
+      }
+    }, 3400);
+
+    // End cutscene (5.0s)
+    setTimeout(() => {
+      if (overlay) overlay.classList.remove('active');
+      state.isTransforming = false;
+    }, 5000);
+  };
+
+  // Launch button from Pre-Sim Modal
+  window.confirmAndLaunchOutbreak = function() {
+    const epSelect = document.getElementById('init-epicenter-select');
+    const epVal = epSelect ? epSelect.value : 'Tarqui';
+
+    const agentsSlider = document.getElementById('init-agents-slider');
+    if (agentsSlider) state.agentCount = parseInt(agentsSlider.value, 10);
+
+    const immuneSlider = document.getElementById('init-immune-slider');
+    if (immuneSlider) state.immunityRate = parseInt(immuneSlider.value, 10) / 100;
+
+    const incubSlider = document.getElementById('init-incub-slider');
+    if (incubSlider) state.incubationSeconds = parseFloat(incubSlider.value);
+
+    const ammoSelect = document.getElementById('init-ammo-select');
+    if (ammoSelect) {
+      state.ammo = parseInt(ammoSelect.value, 10);
+      state.maxAmmo = state.ammo;
+    }
+
+    const cratesSelect = document.getElementById('init-crates-select');
+    if (cratesSelect) state.cureCrates = parseInt(cratesSelect.value, 10);
+
+    const carnavalCheck = document.getElementById('init-carnaval-check');
+    if (carnavalCheck) state.isCarnaval = carnavalCheck.checked;
+
+    const nightCheck = document.getElementById('init-night-check');
+    if (nightCheck && nightCheck.checked !== state.isNight) window.toggleNightCycle();
+
+    const cercoCheck = document.getElementById('init-cerco-check');
+    if (cercoCheck && cercoCheck.checked !== state.cercoVial) window.toggleCercoVial();
+
+    // Re-init clean agent population with new settings
+    initAgents();
+
+    // Hide pre-sim panel
+    const panel = document.getElementById('pre-sim-panel');
+    if (panel) panel.style.display = 'none';
+
+    // Start cinematic sequence
+    window.startOutbreakSequence(epVal);
+  };
+
+  window.togglePreSimPanel = function() {
+    const panel = document.getElementById('pre-sim-panel');
+    if (!panel) return;
+    panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
+  };
+
+  // 5. ANIMATION & COMBAT LOOP (60 FPS)
   function updateAndRender() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const currentZoom = map.getZoom();
-    const effectiveSpeed = state.speed * (state.isNight ? 0.75 : 1.15) * (state.isCarnaval ? 1.35 : 1.0) * (state.cercoVial ? 0.65 : 1.0);
+    const effectiveSpeed = state.speed * (state.isNight ? 0.8 : 1.1) * (state.isCarnaval ? 1.3 : 1.0) * (state.cercoVial ? 0.7 : 1.0);
     const spriteScale = 0.85 + (currentZoom - 14) * 0.42;
 
     // A. Update Agents along streets
@@ -289,35 +591,60 @@
       const rd = routeData[a.routeKey];
       if (!rd) continue;
 
-      if (state.isRunning) {
-        a.posMeters += a.dir * a.speedMps * (1 / 60) * effectiveSpeed * 3.8;
+      if (state.isRunning && !state.isTransforming) {
+        // Slow down if bitten
+        const bittenSpeedFactor = (a.type === 'bitten') ? 0.55 : 1.0;
+        a.posMeters += a.dir * a.speedMps * (1 / 60) * effectiveSpeed * 3.8 * bittenSpeedFactor;
 
-        // Intersection transitions
+        // Intersection transitions (with roadblock check)
         if (a.dir === 1 && a.posMeters >= rd.totalDist) {
           const targetNode = rd.nodeB;
-          const conns = (nodeToRoutes[targetNode] || []).filter(c => c.route !== a.routeKey);
-          const nextConn = conns.length ? conns[Math.floor(Math.random() * conns.length)] : { route: a.routeKey, at: 'nodeB' };
-          a.routeKey = nextConn.route;
-          const nextRd = routeData[a.routeKey];
-          if (nextConn.at === 'nodeA') {
-            a.posMeters = 0;
-            a.dir = 1;
+          let conns = (nodeToRoutes[targetNode] || []).filter(c => c.route !== a.routeKey);
+          
+          // Cerco vial blocks routes towards Montecristi or San Mateo
+          if (state.cercoVial) {
+            conns = conns.filter(c => !c.route.includes('Montecristi') && !c.route.includes('SanMateo'));
+          }
+
+          if (conns.length > 0) {
+            const nextConn = conns[Math.floor(Math.random() * conns.length)];
+            a.routeKey = nextConn.route;
+            const nextRd = routeData[a.routeKey];
+            if (nextConn.at === 'nodeA') {
+              a.posMeters = 0;
+              a.dir = 1;
+            } else {
+              a.posMeters = nextRd.totalDist;
+              a.dir = -1;
+            }
           } else {
-            a.posMeters = nextRd.totalDist;
+            // Turn around
             a.dir = -1;
+            a.posMeters = rd.totalDist;
           }
         } else if (a.dir === -1 && a.posMeters <= 0) {
           const targetNode = rd.nodeA;
-          const conns = (nodeToRoutes[targetNode] || []).filter(c => c.route !== a.routeKey);
-          const nextConn = conns.length ? conns[Math.floor(Math.random() * conns.length)] : { route: a.routeKey, at: 'nodeA' };
-          a.routeKey = nextConn.route;
-          const nextRd = routeData[a.routeKey];
-          if (nextConn.at === 'nodeA') {
-            a.posMeters = 0;
-            a.dir = 1;
+          let conns = (nodeToRoutes[targetNode] || []).filter(c => c.route !== a.routeKey);
+
+          if (state.cercoVial) {
+            conns = conns.filter(c => !c.route.includes('Montecristi') && !c.route.includes('SanMateo'));
+          }
+
+          if (conns.length > 0) {
+            const nextConn = conns[Math.floor(Math.random() * conns.length)];
+            a.routeKey = nextConn.route;
+            const nextRd = routeData[a.routeKey];
+            if (nextConn.at === 'nodeA') {
+              a.posMeters = 0;
+              a.dir = 1;
+            } else {
+              a.posMeters = nextRd.totalDist;
+              a.dir = -1;
+            }
           } else {
-            a.posMeters = nextRd.totalDist;
-            a.dir = -1;
+            // Turn around
+            a.dir = 1;
+            a.posMeters = 0;
           }
         }
       }
@@ -339,6 +666,40 @@
       a.screenX = pt.x;
       a.screenY = pt.y;
 
+      // Handle Incubation timer for Bitten
+      if (a.type === 'bitten' && state.isRunning) {
+        a.incubationTimer -= 1 * state.speed;
+        if (a.incubationTimer <= 0) {
+          // Mutate into infected!
+          a.type = 'infected';
+          a.glitchTimer = 25;
+          sfx.zombieBite();
+
+          state.particles.push({
+            type: 'text',
+            text: '¡MUTADO!',
+            x: a.screenX,
+            y: a.screenY - 14,
+            color: '#dc2626',
+            life: 1.0,
+            decay: 0.04
+          });
+
+          state.particles.push({
+            type: 'mutation_burst',
+            x: a.screenX,
+            y: a.screenY - 3,
+            color: '#dc2626',
+            life: 1.0,
+            decay: 0.04
+          });
+
+          state.bitten = Math.max(0, state.bitten - 1);
+          state.infected += 1;
+          updateHUD();
+        }
+      }
+
       // Decay timers
       if (a.alertTimer > 0) a.alertTimer--;
       if (a.shootCooldown > 0) a.shootCooldown--;
@@ -350,19 +711,19 @@
     }
 
     // B. Combat Detection & Reactions
-    if (state.isRunning) {
+    if (state.isRunning && state.hasStarted && !state.isTransforming) {
       for (let i = 0; i < state.agents.length; i++) {
         const a = state.agents[i];
         if (a.screenX < -20 || a.screenX > canvas.width + 20 || a.screenY < -20 || a.screenY > canvas.height + 20) continue;
 
-        if (!a.isInfected) {
-          // Soldier searches for nearby zombies
+        // 1. Soldier/Civilian shooting if zombie nearby
+        if (a.type === 'human' || a.type === 'immune') {
           let nearestZombie = null;
           let nearestDist = 9999;
 
           for (let j = 0; j < state.agents.length; j++) {
             const other = state.agents[j];
-            if (other.isInfected) {
+            if (other.type === 'infected') {
               const d = Math.hypot(a.screenX - other.screenX, a.screenY - other.screenY);
               if (d < nearestDist) {
                 nearestDist = d;
@@ -376,50 +737,59 @@
             a.facing = (nearestZombie.screenX >= a.screenX) ? 1 : -1;
 
             if (a.shootCooldown <= 0) {
-              a.shootCooldown = 28;
-              a.isShooting = true;
-              a.targetZombiePos = { x: nearestZombie.screenX, y: nearestZombie.screenY };
+              if (state.ammo > 0) {
+                // Shoot weapon & spend ammo
+                a.shootCooldown = 28;
+                a.isShooting = true;
+                state.ammo -= 1;
+                updateResourceTelemetry();
 
-              state.particles.push({
-                type: 'tracer',
-                x1: a.screenX + a.facing * 8,
-                y1: a.screenY - 2,
-                x2: nearestZombie.screenX,
-                y2: nearestZombie.screenY - 3,
-                life: 1.0,
-                decay: 0.12,
-                color: '#fef08a'
-              });
+                state.particles.push({
+                  type: 'tracer',
+                  x1: a.screenX + a.facing * 8,
+                  y1: a.screenY - 2,
+                  x2: nearestZombie.screenX,
+                  y2: nearestZombie.screenY - 3,
+                  life: 1.0,
+                  decay: 0.12,
+                  color: '#fef08a'
+                });
 
-              state.particles.push({
-                type: 'muzzle',
-                x: a.screenX + a.facing * 8,
-                y: a.screenY - 2,
-                life: 1.0,
-                decay: 0.25
-              });
+                state.particles.push({
+                  type: 'muzzle',
+                  x: a.screenX + a.facing * 8,
+                  y: a.screenY - 2,
+                  life: 1.0,
+                  decay: 0.25
+                });
 
-              state.particles.push({
-                type: 'spark',
-                x: nearestZombie.screenX,
-                y: nearestZombie.screenY - 3,
-                life: 1.0,
-                decay: 0.2
-              });
+                state.particles.push({
+                  type: 'spark',
+                  x: nearestZombie.screenX,
+                  y: nearestZombie.screenY - 3,
+                  life: 1.0,
+                  decay: 0.2
+                });
 
-              sfx.gunshot();
+                sfx.gunshot();
+              } else {
+                // Out of ammo: flee!
+                a.dir = (nearestZombie.screenX >= a.screenX) ? -1 : 1;
+                a.speedMps = 16.0;
+              }
             }
           }
-        } else {
-          // Zombie searches for soldiers to bite/vomit
+        } 
+        // 2. Infected attacking humans / immune
+        else if (a.type === 'infected') {
           for (let j = 0; j < state.agents.length; j++) {
-            const soldier = state.agents[j];
-            if (!soldier.isInfected) {
-              const d = Math.hypot(a.screenX - soldier.screenX, a.screenY - soldier.screenY);
+            const target = state.agents[j];
+            if (target.type === 'human' || target.type === 'immune') {
+              const d = Math.hypot(a.screenX - target.screenX, a.screenY - target.screenY);
 
               if (d < 65) {
                 a.alertTimer = 16;
-                a.facing = (soldier.screenX >= a.screenX) ? 1 : -1;
+                a.facing = (target.screenX >= a.screenX) ? 1 : -1;
               }
 
               if (d < 14) {
@@ -427,40 +797,64 @@
                   a.vomitCooldown = 32;
                   a.isVomiting = true;
 
-                  for (let k = 0; k < 6; k++) {
-                    state.particles.push({
-                      type: 'bile',
-                      x: a.screenX + a.facing * 5,
-                      y: a.screenY - 3,
-                      vx: a.facing * (1.8 + Math.random() * 2.5),
-                      vy: -1.2 + Math.random() * 2.4,
-                      size: 2.2 + Math.random() * 2,
-                      color: (Math.random() < 0.6) ? '#84cc16' : '#dc2626',
-                      life: 1.0,
-                      decay: 0.06
-                    });
-                  }
-
-                  sfx.zombieBite();
-
-                  soldier.isInfected = true;
-                  soldier.glitchTimer = 22;
-
-                  if (currentZoom >= 15) {
+                  if (target.type === 'immune') {
+                    // DEFLECTED BY IMMUNITY!
+                    sfx.deflect();
                     state.particles.push({
                       type: 'text',
-                      text: 'INFECTED!',
-                      x: soldier.screenX,
-                      y: soldier.screenY - 14,
-                      color: '#ef4444',
+                      text: '¡INMUNE!',
+                      x: target.screenX,
+                      y: target.screenY - 14,
+                      color: '#facc15',
                       life: 1.0,
                       decay: 0.04
                     });
-                  }
+                    state.particles.push({
+                      type: 'shield_wave',
+                      x: target.screenX,
+                      y: target.screenY - 2,
+                      life: 1.0,
+                      decay: 0.05
+                    });
+                    // Push zombie back
+                    a.posMeters -= a.dir * 3.5;
+                  } else {
+                    // BITTEN / ENTERS INCUBATION!
+                    for (let k = 0; k < 6; k++) {
+                      state.particles.push({
+                        type: 'bile',
+                        x: a.screenX + a.facing * 5,
+                        y: a.screenY - 3,
+                        vx: a.facing * (1.8 + Math.random() * 2.5),
+                        vy: -1.2 + Math.random() * 2.4,
+                        size: 2.2 + Math.random() * 2,
+                        color: (Math.random() < 0.6) ? '#84cc16' : '#dc2626',
+                        life: 1.0,
+                        decay: 0.06
+                      });
+                    }
 
-                  state.infected += Math.floor(Math.random() * 45 + 15);
-                  state.healthy = Math.max(0, state.totalPop - state.infected);
-                  updateHUD();
+                    sfx.zombieBite();
+                    target.type = 'bitten';
+                    target.incubationTimer = state.incubationSeconds * 60;
+                    target.incubationMax = state.incubationSeconds * 60;
+                    target.glitchTimer = 25;
+
+                    state.particles.push({
+                      type: 'text',
+                      text: '¡MORDIDO!',
+                      x: target.screenX,
+                      y: target.screenY - 14,
+                      color: '#f59e0b',
+                      life: 1.0,
+                      decay: 0.04
+                    });
+
+                    state.bitten += 1;
+                    state.healthy = Math.max(0, state.healthy - 1);
+                    state.score += 20;
+                    updateHUD();
+                  }
                 }
               }
             }
@@ -474,13 +868,19 @@
       const a = state.agents[i];
       if (a.screenX < -25 || a.screenX > canvas.width + 25 || a.screenY < -25 || a.screenY > canvas.height + 25) continue;
 
+      const incPct = (a.incubationMax > 0) ? (1 - (a.incubationTimer / a.incubationMax)) : 0;
+
       if (currentZoom < 15) {
-        sprites.drawTacticalChibiHead(ctx, a.screenX, a.screenY, a.isInfected, a.glitchTimer, a.animBob);
+        sprites.drawTacticalChibiHead(ctx, a.screenX, a.screenY, a.type, a.glitchTimer, a.animBob, incPct, a.heroId);
       } else {
-        if (a.isInfected) {
-          sprites.drawZombieMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.isVomiting, a.alertTimer, a.glitchTimer, spriteScale);
+        if (a.type === 'infected') {
+          sprites.drawZombieMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.isVomiting, a.alertTimer, a.glitchTimer, spriteScale, a.heroId);
+        } else if (a.type === 'bitten') {
+          sprites.drawBittenMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.alertTimer, a.glitchTimer, incPct, spriteScale, a.heroId);
+        } else if (a.type === 'immune') {
+          sprites.drawImmuneMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.isShooting, a.alertTimer, a.cureTimer, spriteScale, a.heroId);
         } else {
-          sprites.drawSoldierMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.isShooting, a.alertTimer, a.cureTimer, spriteScale);
+          sprites.drawSoldierMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.isShooting, a.alertTimer, a.cureTimer, spriteScale, (state.ammo > 0), a.heroId);
         }
       }
     }
@@ -489,13 +889,13 @@
     sprites.renderParticles(ctx, state.particles);
   }
 
-  // 4. SIMULATION CLOCK AND TELEMETRY TICK
+  // 6. SIMULATION CLOCK AND TELEMETRY TICK
   let lastTick = Date.now();
   function simLoop() {
     const now = Date.now();
     const delta = now - lastTick;
 
-    if (state.isRunning && delta > (500 / state.speed)) {
+    if (state.isRunning && state.hasStarted && delta > (500 / state.speed)) {
       lastTick = now;
 
       state.minute += 10;
@@ -506,30 +906,46 @@
           state.hour = 0;
           state.day += 1;
           updateNewsTicker();
+          updateSEIRChart();
         }
       }
 
-      // Cure synthesis
+      // Cure synthesis in Lab
       if (state.cureProgress < 100) {
-        const boost = state.distributionPriority === 'med' ? 0.08 : 0.05;
+        // Immunes boost research speed (they provide antibodies)
+        const boost = (state.distributionPriority === 'med' ? 0.12 : 0.07) * (1 + (state.immune / state.totalPop) * 5);
         state.cureProgress = Math.min(100, +(state.cureProgress + boost * state.speed).toFixed(1));
+        
+        if (state.cureProgress >= 100) {
+          // Produces a new supply crate!
+          state.cureCrates += 1;
+          sfx.cure();
+          state.particles.push({
+            type: 'text',
+            text: '+1 CAJA DE ANTÍDOTO SINTETIZADA',
+            x: canvas.width / 2,
+            y: 40,
+            color: '#facc15',
+            life: 1.5,
+            decay: 0.02
+          });
+          state.cureProgress = 0.0;
+        }
+
         const bar = document.getElementById('slug-cure-bar');
         const lbl = document.getElementById('slug-cure-text');
         if (bar) bar.style.width = `${state.cureProgress}%`;
         if (lbl) lbl.innerText = `${state.cureProgress}%`;
       }
 
-      // Outbreak propagation
-      if (state.infected < state.totalPop) {
-        const factor = (state.isCarnaval ? 1.6 : 1.0) * (state.isNight ? 0.8 : 1.1) * (state.cercoVial ? 0.7 : 1.0);
-        const spreadDelta = Math.floor((Math.random() * 32 + 10) * state.speed * factor);
-        state.infected = Math.min(state.totalPop, state.infected + spreadDelta);
-        state.healthy = Math.max(0, state.totalPop - state.infected);
-        state.score += 25;
-        const scoreEl = document.getElementById('score-counter');
-        if (scoreEl) scoreEl.innerText = String(state.score).padStart(6, '0');
+      // Environmental propagation
+      if (state.infected > 0 && state.infected < state.totalPop) {
+        const factor = (state.isCarnaval ? 1.6 : 1.0) * (state.isNight ? 1.2 : 0.9) * (state.cercoVial ? 0.7 : 1.0);
+        const spreadDelta = Math.floor((Math.random() * 4 + 1) * state.speed * factor);
+        
+        state.healthy = Math.max(0, state.totalPop - state.immune - state.infected - state.bitten);
         updateHUD();
-        updateAuditBars();
+        updateParishBars();
         updateContagionRadius();
       }
     }
@@ -540,47 +956,114 @@
 
   requestAnimationFrame(simLoop);
 
-  // Auto-zoom support for direct URL parameter (?zoom=combat)
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('zoom') === 'combat' || urlParams.get('zoom') === '17') {
-    setTimeout(() => {
-      if (window.zoomToCombat) window.zoomToCombat();
-    }, 800);
-  }
-
-  // Telemetry HUD updates
+  // 7. TELEMETRY & HUD UPDATES
   function updateHUD() {
     const hEl = document.getElementById('metric-healthy');
     const hPct = document.getElementById('metric-healthy-pct');
+    const bEl = document.getElementById('metric-bitten');
+    const bPct = document.getElementById('metric-bitten-pct');
     const iEl = document.getElementById('metric-infected');
     const iPct = document.getElementById('metric-infected-pct');
+    const mEl = document.getElementById('metric-immune');
+    const mPct = document.getElementById('metric-immune-pct');
 
     if (hEl) hEl.innerText = state.healthy.toLocaleString('es-EC');
     if (hPct) hPct.innerText = `${((state.healthy / state.totalPop) * 100).toFixed(1)}%`;
-    if (iEl) iEl.innerText = String(state.infected).padStart(6, '0');
-    if (iPct) iPct.innerText = `+${((state.infected / state.totalPop) * 100).toFixed(1)}%`;
+
+    if (bEl) bEl.innerText = String(state.bitten);
+    if (bPct) bPct.innerText = `${((state.bitten / state.totalPop) * 100).toFixed(2)}%`;
+
+    if (iEl) iEl.innerText = String(state.infected);
+    if (iPct) iPct.innerText = `${((state.infected / state.totalPop) * 100).toFixed(2)}%`;
+
+    if (mEl) mEl.innerText = state.immune.toLocaleString('es-EC');
+    if (mPct) mPct.innerText = `${((state.immune / state.totalPop) * 100).toFixed(1)}%`;
+
+    updateResourceTelemetry();
   }
 
-  function updateAuditBars() {
-    const pct = (state.infected / state.totalPop);
-    const tarquiPct = Math.min(100, Math.round(pct * 120 + 40));
-    const murcielagoPct = Math.min(100, Math.max(10, Math.round(pct * 90)));
-    const eloyPct = Math.min(100, Math.round(pct * 110 + 20));
+  function updateResourceTelemetry() {
+    const ammoEl = document.getElementById('metric-ammo');
+    const ammoStatus = document.getElementById('metric-ammo-status');
+    const cratesEl = document.getElementById('metric-cure-crates');
+    const lblAmmoStock = document.getElementById('lbl-ammo-stock');
+    const lblCrateStock = document.getElementById('lbl-crate-stock');
+    const btnCrateCount = document.getElementById('btn-crate-count');
+
+    if (ammoEl) ammoEl.innerText = String(state.ammo);
+    if (ammoStatus) {
+      if (state.ammo <= 0) {
+        ammoStatus.innerText = 'AGOTADA!';
+        ammoStatus.className = 'font-mono text-[9px] text-red-500 font-bold pulse-alert';
+      } else if (state.ammo < 200) {
+        ammoStatus.innerText = 'BAJA!';
+        ammoStatus.className = 'font-mono text-[9px] text-amber-400 font-bold';
+      } else {
+        ammoStatus.innerText = 'STOCK';
+        ammoStatus.className = 'font-mono text-[9px] text-cyan-400 font-bold';
+      }
+    }
+
+    if (cratesEl) cratesEl.innerText = String(state.cureCrates).padStart(2, '0');
+    if (lblAmmoStock) lblAmmoStock.innerText = `${state.ammo} / ${state.maxAmmo}`;
+    if (lblCrateStock) lblCrateStock.innerText = `${state.cureCrates} CAJAS`;
+    if (btnCrateCount) btnCrateCount.innerText = String(state.cureCrates);
+  }
+
+  // Live Parish Contagion calculation based on real agent coordinates
+  function updateParishBars() {
+    const parishCounts = {
+      Tarqui: { total: 0, bad: 0 },
+      Murcielago: { total: 0, bad: 0 },
+      EloyAlfaro: { total: 0, bad: 0 },
+      Montecristi: { total: 0, bad: 0 }
+    };
+
+    state.agents.forEach(a => {
+      let parish = null;
+      if (a.routeKey.includes('Tarqui')) parish = 'Tarqui';
+      else if (a.routeKey.includes('Murcielago')) parish = 'Murcielago';
+      else if (a.routeKey.includes('EloyAlfaro')) parish = 'EloyAlfaro';
+      else if (a.routeKey.includes('Montecristi')) parish = 'Montecristi';
+
+      if (parish && parishCounts[parish]) {
+        parishCounts[parish].total++;
+        if (a.type === 'infected' || a.type === 'bitten') {
+          parishCounts[parish].bad++;
+        }
+      }
+    });
+
+    const calcPct = (p) => {
+      const data = parishCounts[p];
+      if (!data || data.total === 0) return 0;
+      return Math.min(100, Math.round((data.bad / data.total) * 100));
+    };
+
+    const tPct = calcPct('Tarqui');
+    const mPct = calcPct('Murcielago');
+    const ePct = calcPct('EloyAlfaro');
+    const mcPct = calcPct('Montecristi');
 
     const tBar = document.getElementById('bar-tarqui');
     const tText = document.getElementById('bar-tarqui-text');
-    if (tBar) tBar.style.width = `${tarquiPct}%`;
-    if (tText) tText.innerText = `${tarquiPct}% INFECTED`;
+    if (tBar) tBar.style.width = `${tPct}%`;
+    if (tText) tText.innerText = `${tPct}% INFECTED`;
 
     const mBar = document.getElementById('bar-murcielago');
     const mText = document.getElementById('bar-murcielago-text');
-    if (mBar) mBar.style.width = `${murcielagoPct}%`;
-    if (mText) mText.innerText = `${murcielagoPct}% DEFENDED`;
+    if (mBar) mBar.style.width = `${mPct}%`;
+    if (mText) mText.innerText = `${mPct}% INFECTED`;
 
     const eBar = document.getElementById('bar-eloy');
     const eText = document.getElementById('bar-eloy-text');
-    if (eBar) eBar.style.width = `${eloyPct}%`;
-    if (eText) eText.innerText = `${eloyPct}% CONTESTED`;
+    if (eBar) eBar.style.width = `${ePct}%`;
+    if (eText) eText.innerText = `${ePct}% INFECTED`;
+
+    const mcBar = document.getElementById('bar-montecristi');
+    const mcText = document.getElementById('bar-montecristi-text');
+    if (mcBar) mcBar.style.width = `${mcPct}%`;
+    if (mcText) mcText.innerText = `${mcPct}% INFECTED`;
   }
 
   function updateContagionRadius() {
@@ -588,10 +1071,10 @@
     Object.keys(contagionCircles).forEach(key => {
       const circle = contagionCircles[key];
       if (circle) {
-        const baseRadius = (key === state.activeEpicenter) ? 900 : 450;
-        const newRadius = Math.round(baseRadius * (1 + pct * 2.2));
+        const baseRadius = (key === state.activeEpicenter) ? 600 : 300;
+        const newRadius = Math.round(baseRadius * (1 + pct * 2.5));
         circle.setRadius(newRadius);
-        circle.setStyle({ fillOpacity: Math.min(0.6, 0.18 + pct * 0.38) });
+        circle.setStyle({ fillOpacity: Math.min(0.5, 0.12 + pct * 0.4) });
       }
     });
   }
@@ -599,27 +1082,70 @@
   function updateNewsTicker() {
     const ticker = document.getElementById('slug-news-ticker');
     if (!ticker) return;
+
+    if (!state.hasStarted) {
+      ticker.innerText = "★ ESPERANDO PARAMETRIZACIÓN DEL ESCENARIO // SELECCIONE EPICENTRO Y RECURSOS PARA DESPLEGAR PACIENTE CERO ★";
+      return;
+    }
+
     const messages = [
-      `★ MISSION 1 // DÍA ${state.day}: ZOMBIE OUTBREAK INTENSIFIES IN TARQUI FISH MARKET // MUTANT BILE DETECTED // REGULAR ARMY AIRDROPS IMMINENT ★`,
-      `★ MISSION 1 // DÍA ${state.day}: ARMORED CHECKPOINT REINFORCED ON E30 MONTECRISTI HIGHWAY & RUTA SPONDYLUS E15 // CURFEW ORDERED ★`,
-      `★ MISSION 1 // DÍA ${state.day}: MANTA EMERGENCY COUNCIL ORDERS MASS QUARANTINE IN ELOY ALFARO & BARRIO JOCAY ★`,
-      `★ MISSION 1 // DÍA ${state.day}: SUPPLY LAB REPORTS 50% ANTIDOTE SYNTHESIS // CHEMICAL PARACHUTE CRATES READY FOR DISPATCH ★`,
-      `★ MISSION 1 // DÍA ${state.day}: CIVILIANS EVACUATED FROM EL MURCIÉLAGO BEACH AS VIRAL INFECTION RATE ACCELERATES ★`
+      `★ DÍA ${state.day}: BROTE EXPONENCIAL EN ${state.activeEpicenter.toUpperCase()} // REGULAR ARMY DESPLIEGA CONTENCIÓN ★`,
+      `★ DÍA ${state.day}: SE REPORTAN CASOS DE MUTACIÓN CELULAR ACELERADA TRAS MORDEDURAS // SÍNTESIS DE ANTÍDOTO EN CURSO ★`,
+      `★ DÍA ${state.day}: RECURSOS MILITARES Y MUNICIÓN BAJO CONTROL LOGÍSTICO ESTRICTO EN EL CANTÓN MANTA ★`,
+      `★ DÍA ${state.day}: SUJETOS INMUNES DETECTADOS // SU PLASMA PERMITE ACELERAR LA PRODUCCIÓN DE LA CURA ★`,
+      `★ DÍA ${state.day}: SISTEMA DE AIRDROP DE ANTÍDOTO LISTO PARA IMPACTAR SECTORES CRÍTICOS ★`
     ];
     ticker.innerText = messages[state.day % messages.length];
   }
 
-  // 5. EXPOSE USER ACTIONS TO WINDOW
+  // Dynamic SEIR SVG chart calculation
+  function updateSEIRChart() {
+    const marker = document.getElementById('day-marker-line');
+    const markerTxt = document.getElementById('day-marker-text');
+    const xPos = Math.min(590, Math.round((state.day / 60) * 580 + 10));
+
+    if (marker) {
+      marker.setAttribute('x1', xPos);
+      marker.setAttribute('x2', xPos);
+    }
+    if (markerTxt) {
+      markerTxt.setAttribute('x', Math.min(560, xPos + 4));
+      markerTxt.innerText = `DÍA ${state.day}`;
+    }
+
+    // Dynamic curve deformation
+    const infPct = Math.min(1.0, state.infected / 5000);
+    const bitPct = Math.min(1.0, state.bitten / 500);
+
+    const cS = document.getElementById('curve-susceptible');
+    const cB = document.getElementById('curve-bitten');
+    const cI = document.getElementById('curve-infected');
+
+    if (cS) {
+      const dropY = Math.round(10 + infPct * 45);
+      cS.setAttribute('d', `M 0,10 Q 200,12 400,${dropY} T 600,${dropY + 5}`);
+    }
+    if (cB) {
+      const bitY = Math.round(68 - bitPct * 40);
+      cB.setAttribute('d', `M 0,68 Q 200,66 350,${bitY} T 600,64`);
+    }
+    if (cI) {
+      const infY = Math.round(68 - infPct * 55);
+      cI.setAttribute('d', `M 0,68 Q 250,65 420,${infY} T 600,${infY - 2}`);
+    }
+  }
+
+  // 8. WINDOW ACTIONS & USER CONTROLS
   window.zoomToCombat = function() {
     let bestTarget = null;
     let minCombatDist = 9999;
 
     for (let i = 0; i < state.agents.length; i++) {
       const a = state.agents[i];
-      if (!a.isInfected) {
+      if (a.type === 'human' || a.type === 'immune') {
         for (let j = 0; j < state.agents.length; j++) {
           const b = state.agents[j];
-          if (b.isInfected) {
+          if (b.type === 'infected' || b.type === 'bitten') {
             const dist = Math.hypot(a.lat - b.lat, a.lng - b.lng);
             if (dist < minCombatDist) {
               minCombatDist = dist;
@@ -642,6 +1168,13 @@
     map.flyTo(config.center, 13, { duration: 1.0 });
   };
 
+  window.focusOnLandmark = function(key) {
+    const node = config.nodes[key];
+    if (node) {
+      map.flyTo([node.lat, node.lng], 17, { duration: 1.2 });
+    }
+  };
+
   window.addCreditToken = function() {
     state.credits++;
     const badge = document.getElementById('credit-token-badge');
@@ -655,14 +1188,14 @@
     if (state.isRunning) {
       if (btnText) btnText.innerText = '⏸️ PAUSE';
       if (statusText) {
-        statusText.innerText = 'COMBAT READY';
-        statusText.className = 'text-emerald-400';
+        statusText.innerText = state.hasStarted ? 'BROTE ACTIVO' : 'PRE-BROTE (DÍA 0)';
+        statusText.className = state.hasStarted ? 'text-red-500' : 'text-emerald-400';
       }
     } else {
       if (btnText) btnText.innerText = '▶️ PLAY';
       if (statusText) {
-        statusText.innerText = 'PAUSED';
-        statusText.className = 'text-red-500 pulse-alert';
+        statusText.innerText = 'PAUSADO';
+        statusText.className = 'text-yellow-400 pulse-alert';
       }
     }
   };
@@ -731,24 +1264,15 @@
     }
   };
 
+  window.setIncubationTime = function(val) {
+    state.incubationSeconds = parseFloat(val);
+    const txt = document.getElementById('live-incub-text');
+    if (txt) txt.innerText = `${val}s`;
+  };
+
   window.changeEpicenter = function(epKey) {
     state.activeEpicenter = epKey;
     inspectLandmark(epKey);
-    state.agents.forEach(a => {
-      if (a.routeKey.includes(epKey) || Math.random() < 0.3) {
-        a.isInfected = true;
-        a.glitchTimer = 14;
-      }
-    });
-    updateContagionRadius();
-  };
-
-  window.updateInitialPatients = function(val) {
-    const text = document.getElementById('slug-patients-val');
-    if (text) text.innerText = `${val} CASOS`;
-    state.infected = parseInt(val, 10);
-    state.healthy = state.totalPop - state.infected;
-    updateHUD();
   };
 
   window.switchScenario = function(scen) {
@@ -802,13 +1326,32 @@
     map.panTo([node.lat, node.lng], { animate: true, duration: 0.8 });
   };
 
-  // Parachute Antidote Supply Airdrop
-  window.deployCureAirdrop = function() {
-    const crate = document.getElementById('slug-parachute-crate');
-    const targetNode = config.nodes[state.activeEpicenter] || config.nodes.Tarqui;
+  // Parachute Antidote Supply Airdrop (Uses 1 limited crate)
+  window.deployCureAirdrop = function(targetLatLng) {
+    if (state.cureCrates <= 0) {
+      sfx.alarm();
+      state.particles.push({
+        type: 'text',
+        text: '¡SIN CAJAS DE ANTÍDOTO! ESPERANDO SÍNTESIS...',
+        x: canvas.width / 2,
+        y: 60,
+        color: '#ef4444',
+        life: 1.5,
+        decay: 0.02
+      });
+      return;
+    }
 
-    const startPoint = map.latLngToContainerPoint([-0.9350, targetNode.lng]);
-    const endPoint = map.latLngToContainerPoint([targetNode.lat, targetNode.lng]);
+    // Spend 1 crate
+    state.cureCrates -= 1;
+    updateResourceTelemetry();
+    sfx.cure();
+
+    const crate = document.getElementById('slug-parachute-crate');
+    const target = targetLatLng || config.nodes[state.activeEpicenter] || config.nodes.Tarqui;
+
+    const startPoint = map.latLngToContainerPoint([target.lat + 0.02, target.lng]);
+    const endPoint = map.latLngToContainerPoint([target.lat, target.lng]);
 
     if (crate) {
       crate.setAttribute('opacity', '1');
@@ -829,11 +1372,12 @@
 
           let healed = 0;
           state.agents.forEach(a => {
-            const distKm = Math.hypot(a.lat - targetNode.lat, a.lng - targetNode.lng) * 111;
-            if (a.isInfected && distKm < 1.4) {
-              a.isInfected = false;
+            const distKm = Math.hypot(a.lat - target.lat, a.lng - target.lng) * 111;
+            if ((a.type === 'infected' || a.type === 'bitten') && distKm < 1.4) {
+              a.type = 'human';
               a.glitchTimer = 20;
               a.cureTimer = 40;
+              a.incubationTimer = 0;
               healed++;
 
               for (let s = 0; s < 4; s++) {
@@ -854,9 +1398,10 @@
 
           if (healed > 0) sfx.powSalute();
 
-          state.infected = Math.max(0, state.infected - 1500);
-          state.recovered += 1500;
-          state.healthy += 1500;
+          state.infected = Math.max(0, state.infected - healed * 20);
+          state.bitten = Math.max(0, state.bitten - healed * 5);
+          state.recovered += (healed * 20);
+          state.healthy += (healed * 20);
           state.score += 800;
           updateHUD();
           const scoreEl = document.getElementById('score-counter');
@@ -875,26 +1420,46 @@
     state.distributionPriority = p;
     ['med', 'costa', 'peri'].forEach(k => {
       const b = document.getElementById(`slug-prio-${k}`);
-      if (b) b.className = "btn-slug-dark py-1 text-[9px] rounded text-slate-300 font-heavy";
+      if (b) b.className = "btn-slug-dark py-1 text-[9px] rounded text-slate-300 font-heavy cursor-pointer";
     });
     const act = document.getElementById(`slug-prio-${p}`);
-    if (act) act.className = "btn-slug-green py-1 text-[9px] rounded text-black font-heavy";
+    if (act) act.className = "btn-slug-green py-1 text-[9px] rounded text-black font-heavy cursor-pointer";
   };
 
   window.resetSimulation = function() {
-    state.day = 1;
-    state.hour = 8;
+    state.hasStarted = false;
+    state.isTransforming = false;
+    state.day = 0;
+    state.hour = 0;
     state.minute = 0;
-    state.infected = 120;
-    state.healthy = state.totalPop - 120;
-    state.cureProgress = 12.0;
+    state.score = 0;
+    state.cureProgress = 0.0;
+    state.cureCrates = 3;
+    state.ammo = state.maxAmmo;
+    
     initAgents();
     updateHUD();
+    updateParishBars();
     updateContagionRadius();
+    updateSEIRChart();
+
     const bar = document.getElementById('slug-cure-bar');
     const lbl = document.getElementById('slug-cure-text');
-    if (bar) bar.style.width = '12%';
-    if (lbl) lbl.innerText = '12.0%';
+    if (bar) bar.style.width = '0%';
+    if (lbl) lbl.innerText = '0.0%';
+
+    const scoreEl = document.getElementById('score-counter');
+    if (scoreEl) scoreEl.innerText = '000,000';
+
+    const simStatus = document.getElementById('slug-sim-status');
+    if (simStatus) {
+      simStatus.innerText = 'PRE-BROTE (DÍA 0)';
+      simStatus.className = 'text-emerald-400';
+    }
+
+    // Open Pre-Sim Panel
+    const panel = document.getElementById('pre-sim-panel');
+    if (panel) panel.style.display = 'flex';
   };
 
 })();

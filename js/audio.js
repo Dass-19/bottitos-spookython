@@ -76,6 +76,34 @@ const SFX = {
       osc.stop(this.ctx.currentTime + 0.08);
     } catch (e) {}
   },
+  cough() {
+    if (this.muted) return;
+    this.play(220, 'sawtooth', 0.06, 0.05);
+    setTimeout(() => this.play(150, 'sawtooth', 0.08, 0.06), 50);
+  },
+  deflect() {
+    if (this.muted) return;
+    this.play(880, 'triangle', 0.05, 0.08);
+    setTimeout(() => this.play(1760, 'sine', 0.1, 0.08), 40);
+  },
+  transformRoar() {
+    if (this.muted) return;
+    try {
+      this.init();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(80, this.ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(240, this.ctx.currentTime + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.8);
+      gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.85);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.85);
+    } catch (e) {}
+  },
   powSalute() {
     if (this.muted) return;
     this.play(880, 'sine', 0.08, 0.08);
