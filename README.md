@@ -95,20 +95,23 @@ source venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
-### Ejecutar la Aplicación
+---
 
-```bash
-# Desde la raíz del proyecto
-python backend/main.py
-```
+## 📦 Organización del Proyecto
 
-**Output esperado:**
-```
-INFO:     Started server process [12345]
-INFO:     Uvicorn running on http://0.0.0.0:8080
-```
+Este proyecto está **optimizado para producción en AWS ECS Fargate**. La raíz contiene solo lo esencial para el despliegue:
 
-Luego abre tu navegador en: **http://localhost:8080**
+| Carpeta/Archivo | Propósito | En Producción |
+|-----------------|-----------|---|
+| `backend/` | Código Python (FastAPI + SEIR) | ✅ Incluido |
+| `frontend/` | Código HTML/CSS/JS | ✅ Incluido |
+| `Dockerfile` | Configuración del contenedor | ✅ Incluido |
+| `README.md` | Este archivo | ✅ Incluido |
+| `no_desplegado/` | Archivos de desarrollo, documentación y configuraciones legacy | ❌ No incluido |
+
+Todos los archivos que **no se utilizan en el despliegue de ECS Fargate** están organizados en la carpeta `no_desplegado/` para mantener la raíz limpia.
+
+Ver `no_desplegado/README.md` para una lista completa de qué contiene esa carpeta y por qué no se necesita en producción.
 
 ---
 
@@ -337,42 +340,69 @@ curl -X POST http://localhost:8080/api/sim/launch \
 
 ## 🗂️ Estructura del Proyecto
 
-```
-bottitos-spookython/
-├── README.md                          # Este archivo
-├── backend/
-│   ├── main.py                       # Servidor FastAPI
-│   ├── engine.py                     # Motor SEIR principal
-│   ├── montecarlo.py                 # Simulador estocástico (NumPy + threading)
-│   ├── presets.py                    # Escenarios y constantes
-│   ├── requirements.txt              # Dependencias Python
-│   └── __init__.py
-├── frontend/
-│   ├── index.html                    # UI principal
-│   ├── montecarlo.html               # Dashboard de resultados
-│   ├── css/
-│   │   └── arcade.css               # Estilos (tema oscuro, arcada)
-│   ├── js/
-│   │   ├── engine.js                # Lógica de simulación en navegador
-│   │   ├── manta-config.js          # Configuración de Manta
-│   │   ├── sprites.js               # Gestión de sprites animados
-│   │   ├── tailwind-config.js       # Configuración Tailwind CSS
-│   │   └── audio.js                 # Efectos de sonido
-│   ├── assets/
-│   │   └── manta_routes.js          # Rutas de calles de Manta (Leaflet)
-│   └── ...
-├── docs/
-│   ├── arquitectura.md              # Diagrama de arquitectura (Mermaid)
-│   └── costos.md                    # Análisis de costos AWS
-├── infra/                            # (Reservado para IaC en futuro)
-│   └── .gitkeep
-├── scripts/
-│   ├── setup_instance.sh            # Setup para instancia AWS EC2
-│   └── paso1.sh                     # Validación inicial
-├── .git/                             # Historial de commits
-└── .gitignore
+### 📂 Estructura Actual (Desplegada en ECS Fargate)
 
 ```
+bottitos-spookython/                  ✅ LIMPIO - Solo lo que se despliega
+├── Dockerfile                        # ✅ Configuración Docker para ECS Fargate
+├── README.md                         # ✅ Este archivo
+├── .gitignore                        # ✅ Configuración de Git
+│
+├── backend/                          # ✅ DESPLEGADO - Código Python
+│   ├── main.py                      # Servidor FastAPI (puerto 8080)
+│   ├── engine.py                    # Motor SEIR principal
+│   ├── montecarlo.py                # Simulador estocástico (NumPy + threading)
+│   ├── presets.py                   # Escenarios y constantes
+│   ├── requirements.txt             # Dependencias Python
+│   └── __init__.py
+│
+├── frontend/                         # ✅ DESPLEGADO - Código web
+│   ├── index.html                   # UI principal
+│   ├── montecarlo.html              # Dashboard de resultados
+│   ├── css/
+│   │   └── arcade.css              # Estilos (tema oscuro, arcada)
+│   ├── js/
+│   │   ├── engine.js               # Lógica de simulación en navegador
+│   │   ├── manta-config.js         # Configuración de Manta
+│   │   ├── sprites.js              # Gestión de sprites animados
+│   │   ├── tailwind-config.js      # Configuración Tailwind CSS
+│   │   └── audio.js                # Efectos de sonido
+│   ├── assets/
+│   │   └── manta_routes.js         # Rutas de calles de Manta (Leaflet)
+│   └── ...
+│
+└── no_desplegado/                   # 📦 Archivos NO utilizados en ECS Fargate
+    ├── README.md                    # Documentación de esta carpeta
+    ├── .ebextensions/              # Config Elastic Beanstalk (no usado)
+    ├── .elasticbeanstalk/          # Config EB legacy (no usado)
+    ├── .github/                    # GitHub Actions (no usado)
+    ├── .platform/                  # Configuración legacy (no usado)
+    ├── docs/                       # Documentación adicional
+    ├── infra/                      # IaC (Terraform, CloudFormation)
+    ├── scripts/                    # Scripts auxiliares
+    ├── .dockerignore               # Config Docker (no crítico)
+    ├── app.zip                     # Archivo comprimido antiguo
+    ├── buildspec.yml               # AWS CodeBuild (no usado)
+    ├── DEPLOYMENT.md               # Documentación antigua
+    ├── DEPLOY_TO_ECS.md            # Guía de despliegue anterior
+    ├── deploy-ecs.ps1              # Script antiguo de ECS
+    ├── deploy-ecs-fixed.ps1        # Script corregido (no usado)
+    ├── ecs-task-definition.json    # Task definition anterior
+    ├── ECS_DEPLOYMENT.md           # Documentación ECS antigua
+    ├── FINAL_DEPLOYMENT_RESULT.md  # Reporte final
+    ├── GEMINI.md                   # Integración Gemini
+    ├── OBTENER_URL_AHORA.md        # Instrucciones URL antigua
+    ├── Procfile                    # Config Heroku (no usado)
+    ├── README_DEPLOYMENT_LINK.md   # Enlace antiguo
+    ├── SPOOKYTHON_SUBMISSION.md    # Envío a Spookython
+    ├── Spookython 2026 - Track B_ La Plaga Zombie.pdf  # PDF de evento
+    └── vercel.json                 # Config Vercel (no usado)
+```
+
+### 📌 Resumen
+- ✅ **Raíz**: Solo 4 elementos clave (Dockerfile, README.md, backend/, frontend/)
+- 📦 **no_desplegado/**: Todo lo demás, organizado y etiquetado
+- 🚀 **Despliegue**: AWS ECS Fargate (http://100.54.228.201:8080)
 
 ---
 
