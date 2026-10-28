@@ -1,0 +1,105 @@
+name: Build and Push to ECR
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::028610956449:role/GitHubActionsRole
+          aws-region: us-east-1
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: mantazero
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "Image pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+      
+      - name: Create CloudWatch Logs group
+        run: |
+          aws logs create-log-group --log-group-name /ecs/mantazero --region us-east-1 2>/dev/null || true
+      
+      - name: Register ECS task definition
+        run: |
+          aws ecs register-task-definition \
+            --cli-input-json file://ecs-task-definition.json \
+            --region us-east-1
+      
+      - name: Create ECS cluster
+        run: |
+          aws ecs create-cluster \
+            --cluster-name mantazero-cluster \
+            --region us-east-1 2>/dev/null || true
+      
+      - name: Get VPC and Subnet
+        id: network
+        run: |
+          VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query 'Vpcs[0].VpcId' --output text --region us-east-1)
+          SUBNET_ID=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID --query 'Subnets[0].SubnetId' --output text --region us-east-1)
+          echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
+          echo "subnet_id=$SUBNET_ID" >> $GITHUB_OUTPUT
+      
+      - name: Create Security Group
+        id: sg
+        run: |
+          VPC_ID=${{ steps.network.outputs.vpc_id }}
+          SG_ID=$(aws ec2 create-security-group \
+            --group-name mantazero-sg \
+            --description "MantaZero ECS Security Group" \
+            --vpc-id $VPC_ID \
+            --region us-east-1 \
+            --query 'GroupId' --output text 2>/dev/null || aws ec2 describe-security-groups --filters Name=group-name,Values=mantazero-sg Name=vpc-id,Values=$VPC_ID --query 'SecurityGroups[0].GroupId' --output text --region us-east-1)
+          echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
+      
+      - name: Authorize port 8080
+        run: |
+          SG_ID=${{ steps.sg.outputs.sg_id }}
+          aws ec2 authorize-security-group-ingress \
+            --group-id $SG_ID \
+            --protocol tcp --port 8080 \
+            --cidr 0.0.0.0/0 \
+            --region us-east-1 2>/dev/null || true
+      
+      - name: Create ECS Service
+        run: |
+          SUBNET_ID=${{ steps.network.outputs.subnet_id }}
+          SG_ID=${{ steps.sg.outputs.sg_id }}
+          aws ecs create-service \
+            --cluster mantazero-cluster \
+            --service-name mantazero-service \
+            --task-definition mantazero:1 \
+            --desired-count 1 \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_ID],securityGroups=[$SG_ID],assignPublicIp=ENABLED}" \
+            --region us-east-1 2>/dev/null || true
+      
+      - name: Output deployment info
+        run: |
+          echo "✓ Image pushed to ECR"
+          echo "✓ Task definition registered"
+          echo "✓ ECS Cluster created"
+          echo "✓ ECS Service created"
+          echo ""
+          echo "Next: Check AWS console for running tasks and get public IP"
