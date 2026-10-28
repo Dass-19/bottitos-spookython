@@ -19,7 +19,9 @@ app.zip
 .platform
 Procfile
 vercel.json
-no_desplegado
+.agents
+.aos
+scripts
 docs
 infra
 *.md
