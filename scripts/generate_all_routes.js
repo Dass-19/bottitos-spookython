@@ -1,5 +1,8 @@
 const https = require('https');
 const fs = require('fs');
+const path = require('path');
+
+const OUT = path.join(__dirname, '..', 'frontend', 'assets', 'manta_routes.js');
 
 // Real terrestrial nodes of Manta Cantón
 const NODES = {
@@ -149,8 +152,8 @@ async function run() {
   }
 
   const outStr = 'window.MANTA_STREET_ROUTES = ' + JSON.stringify(result) + ';\n';
-  fs.writeFileSync('assets/manta_routes.js', outStr);
-  console.log('Successfully written assets/manta_routes.js!');
+  fs.writeFileSync(OUT, outStr);
+  console.log('Successfully written ' + OUT);
 }
 
 run();

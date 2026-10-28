@@ -1,527 +1,231 @@
-# 🏗️ Arquitectura de MantaZero: Epidemic Command
+# Arquitectura · MantaZero: Epidemic Command
+
+El diagrama completo y editable está en [arquitectura.excalidraw](arquitectura.excalidraw); se abre en excalidraw.com. Este documento detalla cada parte.
 
 ---
 
-## ☁️ Arquitectura Cloud en AWS (Despliegue de Producción)
+## 1. Infraestructura AWS
 
-El sistema opera bajo un despliegue contenerizado administrado mediante **AWS ECS Fargate** en la región **`us-east-1` (N. Virginia)**.
-
-### Diagrama de Infraestructura AWS
+Contenedor único en ECS Fargate, región `us-east-1`.
 
 ```mermaid
-graph TB
-    subgraph Internet["🌐 Zona Pública (Internet)"]
-        User["👤 Usuario / Jurado Evaluador<br/>Navegador Web (Chrome / Firefox / Edge)"]
-    end
+graph LR
+    User["Usuario<br/>navegador"] -->|"HTTP :80"| ALB["ALB<br/>mantazero-alb"]
 
-    subgraph AWSCloud["☁️ AWS Cloud (Región us-east-1)"]
-        subgraph VPC["Amazon VPC (172.31.0.0/16)"]
-            subgraph PublicSubnet["Subred Pública (subnet-0330e33fb231d099d)"]
-                SG["🛡️ Security Group (sg-0f28593e6c8063193)<br/>Inbound: TCP 8080 [0.0.0.0/0]<br/>Outbound: Todo el tráfico permitido"]
-                
-                subgraph ECSCluster["Amazon ECS Cluster: mantazero-cluster"]
-                    subgraph FargateTask["Tarea Fargate: mantazero:4<br/>0.25 vCPU / 512 MB RAM<br/>IP Pública Asignada: 3.228.0.232:8080"]
-                        direction TB
-                        Container["🐳 Contenedor Docker (python:3.14-slim)"]
-                        FastAPI["⚡ Servidor Uvicorn / FastAPI (Puerto 8080)"]
-                        StaticFront["🖥️ Frontend Estático (HTML5, JS, Leaflet, Chart.js)"]
-                        SEIREngine["⚙️ Motor SEIR Táctico en Memoria"]
-                        MCRunner["🔄 Monte Carlo Runner (NumPy Vectorizado en Thread Background)"]
-                        
-                        Container --> FastAPI
-                        FastAPI --> StaticFront
-                        FastAPI --> SEIREngine
-                        FastAPI --> MCRunner
-                    end
-                end
+    subgraph AWS["AWS us-east-1"]
+        subgraph VPC["VPC 172.31.0.0/16 · subred pública"]
+            ALB -->|":8080"| SG["Security Group<br/>TCP 8080"]
+            subgraph Cluster["ECS cluster: mantazero-cluster"]
+                SVC["maintazero-service<br/>mantazero:4 · 0.25 vCPU / 512 MB"]
+                OLD["mantazero-service<br/>mantazero:1 (anterior)"]
             end
+            SG --> SVC
         end
-
-        subgraph ManagedServices["Servicios Administrados de AWS"]
-            ECR["📦 Amazon ECR (028610956449.dkr.ecr.us-east-1)<br/>Repositorio de Imagen: mantazero"]
-            CW["📊 Amazon CloudWatch Logs<br/>Grupo: /ecs/mantazero"]
-            IAM["🔐 AWS IAM<br/>Rol de Ejecución: ecsTaskExecutionRole"]
-            Budget["💰 AWS Budgets<br/>Presupuesto Mensual $50 USD con Alertas"]
-        end
+        ECR["ECR<br/>mantazero"] -->|"pull imagen"| SVC
+        SVC -->|"stdout/stderr"| CW["CloudWatch Logs<br/>/ecs/mantazero"]
+        IAM["IAM<br/>ecsTaskExecutionRole"] -.-> SVC
+        Budget["AWS Budgets<br/>$50/mes"]
     end
 
-    %% Conexiones y flujo
-    User -->|"1. Petición HTTP /api/* o frontend (PÚBLICO)"| SG
-    SG -->|"2. Tráfico enrutado al contenedor"| FargateTask
-    IAM -.->|"Autorización y políticas mínimas"| FargateTask
-    ECR -->|"Descarga inicial de imagen Docker"| Container
-    FastAPI -->|"Envío de telemetría y logs stdout/stderr"| CW
-
-    style Internet fill:#e0f2fe,stroke:#0284c7
-    style AWSCloud fill:#f8fafc,stroke:#475569
-    style VPC fill:#f1f5f9,stroke:#64748b
-    style PublicSubnet fill:#f8fafc,stroke:#94a3b8
-    style SG fill:#fef3c7,stroke:#d97706
-    style FargateTask fill:#ecfdf5,stroke:#059669
-    style ManagedServices fill:#fdf4ff,stroke:#c026d3
+    style OLD stroke-dasharray: 4 4
 ```
 
-### Componentes AWS y Superficie de Exposición:
-1. **Zonas Públicas:**
-   - **Puerto 8080 (HTTP):** Expuesto públicamente mediante Elastic Network Interface (ENI) con IP pública para acceso directo de usuarios y jurados al mapa interactivo y endpoints REST.
-2. **Zonas Privadas y Protegidas:**
-   - **VPC Subnet:** Red aislada donde reside la tarea de cómputo.
-   - **IAM Least Privilege:** Rol `ecsTaskExecutionRole` restringido exclusivamente a lectura en ECR y escritura de logs hacia CloudWatch.
-   - **Sin Base de Datos Expuesta:** El estado epidemiológico se ejecuta efímeramente en memoria de Python con latencia menor a 2 ms.
+| Componente | Configuración |
+| :--- | :--- |
+| ALB | Listener HTTP :80, target en el contenedor :8080. Sin HTTPS: usa el DNS por defecto del ALB, sin certificado ACM. |
+| Security Group | Inbound TCP 8080 desde `0.0.0.0/0` (`infra/deploy-ecs.ps1`). |
+| Tarea | `mantazero:4`, 0.25 vCPU / 512 MB, `assignPublicIp=ENABLED`, HEALTHCHECK `GET /api/health` (start period 30 s). |
+| IAM | `ecsTaskExecutionRole`: lectura de ECR y escritura de logs. |
+| Datos | Ninguna base de datos; todo el estado vive en memoria del proceso. |
+
+### Estado en producción
+
+- `maintazero-service` → `mantazero:4`: servicio actual, detrás del ALB.
+- `mantazero-service` → `mantazero:1`: despliegue anterior, todavía Active.
+- Uso medido (CloudWatch, 3 h): CPU promedio ~2 % con pico de 13.19 % en el despliegue, memoria ~10 % (~51 MB). La tarea está sobredimensionada para la carga actual.
+
+![ECS: servicios](ecs-servicios.png)
+
+![ECS: CPU y memoria](ecs-health.png)
+
+### Build y despliegue
+
+1. `Dockerfile`: imagen `python:3.14-slim` que copia `backend/` y `frontend/` y arranca con `python -m backend.main`.
+2. `infra/buildspec.yml`: CodeBuild hace login en ECR, `docker build` y `push`.
+3. `infra/deploy-ecs.ps1` + `infra/ecs-task-definition.json`: crean el log group, registran la task definition y crean el cluster y el servicio.
+
+El ALB no está en los scripts; se creó desde la consola.
 
 ---
 
-## 🧩 Diagrama General de Software (Capas de Aplicación)
+## 2. Componentes de software
 
 ```mermaid
 graph TB
-    subgraph Client["🖥️ Cliente (Navegador)"]
-        HTML["index.html<br/>Interfaz Táctica"]
-        JS["engine.js<br/>Lógica Local"]
-        MAP["Leaflet.js<br/>Mapa 2D Manta"]
-        AUDIO["audio.js<br/>Efectos Sonido"]
+    subgraph Client["Cliente (navegador)"]
+        HTML["index.html"]
+        JS["js/engine.js"]
+        CFG["manta-config.js<br/>manta_routes.js"]
+        SPR["sprites.js · audio.js"]
+        MCH["montecarlo.html<br/>Chart.js"]
     end
-    
-    subgraph API["🔗 API REST (FastAPI)"]
-        HEALTH["GET /api/health"]
-        STATE["GET /api/state"]
-        LAUNCH["POST /api/sim/launch"]
-        TICK["POST /api/sim/tick"]
-        HIT["POST /api/sim/combat-hit"]
-        AIRDROP["POST /api/sim/airdrop"]
-        MC_STATUS["GET /api/montecarlo/status"]
-        MC_RESULTS["GET /api/montecarlo/results"]
+
+    subgraph Server["backend/ (FastAPI)"]
+        MAIN["main.py<br/>rutas + Pydantic + StaticFiles"]
+        ENG["engine.py<br/>SeirSimulationEngine"]
+        MC["montecarlo.py<br/>MonteCarloRunner"]
+        PRE["presets.py<br/>escenarios A/B/C"]
     end
-    
-    subgraph Backend["⚙️ Backend (Python FastAPI)"]
-        MAIN["main.py<br/>Servidor HTTP"]
-        ENGINE["SeirSimulationEngine<br/>Motor Principal"]
-        MC["MonteCarloRunner<br/>Thread Background"]
-    end
-    
-    subgraph Logic["🧬 Lógica Epidemiológica"]
-        SEIR["SEIR Estocástico<br/>(S→E→I→R)"]
-        COMBAT["Combate Táctico<br/>(I → Muerte)"]
-        CURE["Antídotos<br/>(E,I → R)"]
-        NUMPY["NumPy<br/>Vectorizado"]
-    end
-    
-    subgraph Data["💾 Datos"]
-        STATE_ENGINE["Estado Simulación<br/>Día/Hora/Agentes"]
-        PARAMS["Parámetros<br/>R₀, vacunas, munición"]
-        PRESETS["Escenarios A/B/C<br/>Desastres Naturales"]
-    end
-    
-    subgraph Dashboard["📊 Dashboard MC"]
-        HTML2["montecarlo.html"]
-        CHART["Chart.js<br/>Gráficas"]
-        STATS["Estadísticas<br/>p5,p95,mean"]
-    end
-    
-    %% Conexiones Cliente
-    HTML -->|"GET /"| MAIN
-    JS -->|"REST JSON"| API
-    MAP -->|"OpenStreetMap"| OSM["🌍 Tiles OSM"]
-    
-    %% Conexiones API
-    API -->|"Endpoints"| MAIN
-    
-    %% Conexiones Backend
-    MAIN -->|"Inicia/Controla"| ENGINE
-    MAIN -->|"Inicia Thread"| MC
-    ENGINE -->|"Estado en vivo"| STATE_ENGINE
-    
-    %% Conexiones Lógica
-    ENGINE -->|"Aplica SEIR"| SEIR
-    ENGINE -->|"Registra disparos"| COMBAT
-    ENGINE -->|"Lanza antídotos"| CURE
-    MC -->|"Vectorizado 500-5000x"| NUMPY
-    NUMPY -->|"Simula 60 días"| SEIR
-    NUMPY -->|"Computa estadísticas"| STATS
-    
-    %% Conexiones Datos
-    ENGINE --> PARAMS
-    ENGINE --> STATE_ENGINE
-    MAIN -->|"GET"| PRESETS
-    MC -->|"Lee"| PARAMS
-    MC -->|"Lee"| PRESETS
-    
-    %% Conexiones Dashboard
-    MC -->|"JSON"| MC_RESULTS
-    MC_RESULTS -->|"Descarga"| HTML2
-    HTML2 --> CHART
-    CHART --> STATS
-    
-    style Client fill:#e1f5ff
-    style API fill:#fff3e0
-    style Backend fill:#f3e5f5
-    style Logic fill:#e8f5e9
-    style Data fill:#fce4ec
-    style Dashboard fill:#fff9c4
+
+    TILES["Tiles ArcGIS"]
+
+    HTML --> JS
+    JS --> CFG
+    JS --> SPR
+    JS -->|"REST JSON"| MAIN
+    JS -->|"Leaflet"| TILES
+    MCH -->|"GET /api/montecarlo/results"| MAIN
+    MAIN --> ENG
+    MAIN -->|"launch → start()"| MC
+    ENG --> PRE
+    MC --> PRE
 ```
+
+### Frontend (`frontend/`)
+
+| Archivo | Responsabilidad |
+| :--- | :--- |
+| `index.html` | Mapa, HUD y controles. Carga Leaflet (unpkg) y Tailwind (CDN). |
+| `js/engine.js` | Estado local, `syncBackend()`, agentes sobre la red vial, colisiones y combate, `simLoop()`, HUD, curva SEIR en vivo, escenarios, airdrop, polling del Monte Carlo. |
+| `js/manta-config.js` | 20 nodos (intersecciones reales de Manta) y centro del mapa. |
+| `assets/manta_routes.js` | Geometría de rutas entre nodos, generada con `scripts/`. |
+| `js/sprites.js` | `HERO_ROSTER`, `MANTA_SPRITES` (GIFs). |
+| `js/audio.js` | `SFX`. |
+| `montecarlo.html` | Dashboard con 3 gráficas (`chart-i`, `chart-seir`, `chart-hist`). |
+
+La simulación por agente (movimiento, mordidas, incubación, disparos) corre en el navegador. El servidor es la fuente de verdad de los contadores, la munición, las cajas, el reloj y el puntaje.
+
+### Pipeline de datos (`scripts/`, offline)
+
+- **Red vial:** `node scripts/generate_all_routes.js` consulta OSRM entre los 20 nodos y escribe `frontend/assets/manta_routes.js`.
+- **Sprites SEIR:** `generar_sprites.py` (PIL) (`python scripts/generar_sprites.py`) dibuja de forma procedural `sano`, `mordido`, `zombie` y `exorcizado` (`.gif` + `_sheet.png`) y `estados_preview.gif`.
 
 ---
 
-## Flujo de Datos: Ciclo de Simulación
+## 3. API (`backend/main.py`)
+
+| Método | Ruta | Acción |
+| :--- | :--- | :--- |
+| GET | `/api/health` | Estado del servicio y `zombieMaxHp`. |
+| GET | `/api/presets` | Escenarios A/B/C. |
+| GET | `/api/state` | Estado actual de la simulación. |
+| POST | `/api/sim/reset` | Reinicia el estado. |
+| POST | `/api/sim/scenario` | `{scenario}`: aplica el preset (incluye R₀). |
+| POST | `/api/sim/launch` | `LaunchRequest`: paciente cero y arranque del Monte Carlo (50–5000 runs). |
+| POST | `/api/sim/tick` | `{infected, bitten, immune, ammo}`: avanza el reloj 10 min. |
+| POST | `/api/sim/combat-hit` | `{zombieId}`: −1 bala, −1 HP; baja al 8.º impacto. |
+| POST | `/api/sim/airdrop` | `{healedCount}`: −1 caja, I → R. |
+| GET | `/api/montecarlo/status` | `idle` / `running` / `done` / `error` y progreso. |
+| GET | `/api/montecarlo/results` | Resultados; responde 202 mientras corre. |
+| GET | `/montecarlo` | Sirve `montecarlo.html`. |
+| GET | `/*` | Frontend estático (`StaticFiles`, `html=True`). |
+
+CORS abierto (`allow_origins=["*"]`).
+
+---
+
+## 4. Motor en vivo (`backend/engine.py`)
+
+`sim_engine` es un singleton por proceso y todos los clientes comparten la misma simulación.
+
+- **Estado:** reloj (día, hora, minuto), contadores S/E/I/R y muertes, munición, cajas, progreso de síntesis, puntaje y parámetros del escenario. `zombie_hp` guarda el HP de cada zombie.
+- **`tick()`:** recibe los contadores del cliente, avanza 10 min y sintetiza antídoto. El progreso sube `0.12` por tick con prioridad `med` (si no, `0.07`), multiplicado por `(1 + 5 · inmunes / población) · speed`. Al llegar a 100 suma una caja.
+- **`register_zombie_hit()`:** sin munición responde `NO_AMMO`. Cada baja suma 250 puntos.
+- **`deploy_airdrop()`:** sin cajas responde `NO_CRATES`. Suma 500 puntos por curado.
+
+---
+
+## 5. Monte Carlo (`backend/montecarlo.py`)
+
+Hilo daemon con `Lock` para status y resultados. Cada `start()` cancela la corrida previa. Las réplicas se ejecutan en 10 lotes sobre un único `default_rng(seed)`, con `sleep(0.05)` entre lotes para ceder CPU a la API.
+
+Por día y por réplica, vectorizado en NumPy, con N = 271 145:
+
+| Transición | Fórmula |
+| :--- | :--- |
+| S → E | `Binomial(S, 1 − exp(−β·I/N))`, β = R₀ · mult / 5 |
+| E → I | `Binomial(E, 1 − exp(−1/τ))`, τ = max(0.5, incubaciónSeg · 0.5) días |
+| I → abatido | `min(Binomial(I, p_kill), I, ⌊munición / 10⌋)`, p_kill = 1 − exp(−1.2 · armados / agentes) |
+| Laboratorio | +1 caja cada 10 días |
+| Antídoto | cada 5 días, si hay caja: `Binomial(I, 0.25)` y `Binomial(E, 0.25)` → R |
+
+`mult` = 1.3 en carnaval × 1.1 de noche × 0.7 con cerco vial.
+
+**Salida:** series S/E/I/R (media, P5, P25, P75, P95), estadísticas del pico, día del pico, infectados finales, total contagiado, abatidos y munición restante; probabilidad de contención y de agotamiento de munición; histograma de picos.
+
+**Rendimiento:** 400 runs × 60 días ≈ 2 s.
+
+---
+
+## 6. Ciclo de una partida
 
 ```mermaid
 sequenceDiagram
-    actor User as 👤 Usuario
-    participant FE as 🌐 Frontend<br/>JavaScript
-    participant API as 📡 FastAPI<br/>REST API
-    participant ENG as ⚙️ Engine<br/>(SEIR)
-    participant MC as 🔄 Monte Carlo<br/>(NumPy)
-    participant DB as 💾 Estado
+    actor U as Usuario
+    participant FE as Frontend
+    participant API as FastAPI
+    participant ENG as sim_engine
+    participant MC as mc_runner
 
-    User->>FE: 1. Selecciona Escenario A
-    FE->>API: POST /api/sim/scenario {A}
-    API->>ENG: apply_scenario("A")
-    ENG->>DB: Carga parámetros: R₀=4.85, Armas=400, etc.
-    API-->>FE: { state: {...} }
-    
-    User->>FE: 2. Ajusta parámetros (opcional)
-    FE->>FE: Valida inputs localmente
-    
-    User->>FE: 3. Clic "LANZAR BROTE"
-    FE->>API: POST /api/sim/launch {agentCount, ammo, mcSeed=42, mcRuns=400}
+    U->>FE: Elige escenario
+    FE->>API: POST /api/sim/scenario
+    API->>ENG: apply_scenario()
+
+    U->>FE: Lanzar brote
+    FE->>API: POST /api/sim/launch
     API->>ENG: launch_outbreak()
-    ENG->>DB: infected=1, healthy=94, immune=8
-    
-    par Simulación Principal
-        loop Cada frame (60 FPS)
-            User->>FE: [Interactúa en mapa]
-            FE->>FE: Renderiza sprites
-            FE->>FE: Calcula colisiones
-            FE->>API: POST /api/sim/tick {infected, ammo, ...}
-            API->>ENG: tick()
-            ENG->>DB: Actualiza estado
-            API-->>FE: { state, newDay }
-            FE->>FE: Actualiza HUD
-            FE->>FE: Dibuja mapa
+    API->>MC: start(state, runs, seed)
+
+    loop simLoop
+        FE->>FE: mueve agentes, contagios, colisiones
+        FE->>API: POST /api/sim/tick
+        API->>ENG: tick()
+        opt disparo
+            FE->>API: POST /api/sim/combat-hit
         end
-    and Monte Carlo (Background)
-        API->>MC: start(params, 400 runs, seed=42)
-        Note over MC: NumPy: S→E→I vectorizado
-        MC->>MC: Simula 60 días × 400 runs
-        MC->>MC: Calcula p5, p25, p75, p95
-        MC->>DB: Guarda resultados
+        opt airdrop
+            FE->>API: POST /api/sim/airdrop
+        end
     end
-    
-    User->>FE: 4. Lanza antídoto (clic)
-    FE->>API: POST /api/sim/airdrop {healedCount: 10}
-    API->>ENG: deploy_airdrop(10)
-    ENG->>DB: infected -= 10, immune += 10, cureCrates -= 1
-    API-->>FE: { deployed: true, state }
-    FE->>FE: Anima paracaídas SVG
-    
-    User->>FE: 5. MC termina (background)
+
     FE->>API: GET /api/montecarlo/status
-    API-->>FE: { state: "done", progress: 1.0 }
-    FE->>FE: Muestra botón "MONTE CARLO"
-    
-    User->>FE: 6. Clic "MONTE CARLO"
-    FE->>FE: Abre montecarlo.html
+    API-->>FE: done
+    U->>FE: abre /montecarlo
     FE->>API: GET /api/montecarlo/results
-    API-->>FE: { meta, series, summary, histogram }
-    FE->>FE: Renderiza gráficas (Chart.js)
-    FE->>User: Muestra: pico infección, zombis abatidos, etc.
+    API-->>FE: series, summary, histogram
 ```
 
 ---
 
-## Arquitectura por Capas
+## 7. Seguridad
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     PRESENTACIÓN (Frontend)                 │
-│  HTML5 + CSS3 + Vanilla JavaScript + Leaflet + Chart.js    │
-│  - index.html: Interfaz táctica en tiempo real              │
-│  - montecarlo.html: Dashboard de resultados                 │
-│  - assets/sprites: GIFs Metal Slug (zombis, soldados)       │
-└─────────────────────────────────────────────────────────────┘
-                           ↕ REST JSON
-┌─────────────────────────────────────────────────────────────┐
-│                    API REST (FastAPI)                       │
-│  - Health check, presets, simulación CRUD                   │
-│  - Endpoints: /api/sim/*, /api/montecarlo/*                │
-│  - CORS habilitado (demo) → restrictivo en prod             │
-└─────────────────────────────────────────────────────────────┘
-                           ↕ Métodos Python
-┌─────────────────────────────────────────────────────────────┐
-│               LÓGICA DE NEGOCIO (Backend)                   │
-│                                                             │
-│  1️⃣ SeirSimulationEngine (backend/engine.py)               │
-│     - Estado principal: día, hora, S/E/I/R                 │
-│     - Métodos: launch, tick, register_zombie_hit,          │
-│       deploy_airdrop                                        │
-│     - Transiciones: E→I (binomial), I→Muerto (combate)    │
-│                                                             │
-│  2️⃣ MonteCarloRunner (backend/montecarlo.py)               │
-│     - Thread background: NumPy vectorizado                  │
-│     - Entrada: params, runs, seed                          │
-│     - Salida: series {S,E,I,R} + estadísticas             │
-│     - 500-5000 simulaciones de 60 días c/u                 │
-└─────────────────────────────────────────────────────────────┘
-                           ↕ Python/NumPy
-┌─────────────────────────────────────────────────────────────┐
-│        NÚCLEO EPIDEMIOLÓGICO (Modelos Matemáticos)         │
-│                                                             │
-│  SEIR Estocástico:                                         │
-│  - S → E: Binomial(S, 1 - exp(-β·I/N))                    │
-│  - E → I: Binomial(E, 1 - exp(-1/τ_incub))                │
-│  - I → R: Binomial(I, 0.25) si hay cajas                  │
-│  - I → D: min(Binomial(I, p_kill), munición/8)            │
-│                                                             │
-│  Parámetros:                                               │
-│  - β: Tasa de contagio (R₀ / días_infecciosos)           │
-│  - p_kill: 1 - exp(-1.2 · soldados/agentes)              │
-│  - R₀: 1.15 - 4.85 según escenario                        │
-│  - τ_incub: 5-15 segundos (escala epidemiológica)        │
-└─────────────────────────────────────────────────────────────┘
-                           ↕ NumPy Arrays
-┌─────────────────────────────────────────────────────────────┐
-│                   ALMACENAMIENTO (Estado)                   │
-│                                                             │
-│  - Estado en memoria: Dict Python {day, infected, ...}    │
-│  - Sin persistencia: Reset en cada nueva simulación        │
-│  - Parámetros: Presets.py + inputs REST                   │
-│  - Resultados MC: Numpy arrays → JSON en memoria           │
-│                                                             │
-│  Futuro (AWS):                                             │
-│  - S3: Guardar simulaciones completas (.json)             │
-│  - DynamoDB: Histórico de corridas                        │
-│  - CloudWatch: Logs + métricas                            │
-└─────────────────────────────────────────────────────────────┘
-```
+**Estado actual:** sin autenticación, CORS `*`, HTTP sin TLS, Security Group 8080 abierto a Internet (se puede entrar a la tarea sin pasar por el ALB). No hay credenciales en el código ni base de datos.
+
+**Pendiente para producción:**
+
+- [ ] HTTPS: dominio propio + ACM en el ALB, o CloudFront delante.
+- [ ] Security Group de la tarea que solo acepte tráfico del SG del ALB.
+- [ ] CORS restringido al dominio.
+- [ ] Rate limiting y WAF.
+- [ ] Autenticación (API key o JWT) en los endpoints de escritura.
+- [ ] Una simulación por sesión, en lugar del singleton global.
 
 ---
 
-## Componentes Clave
+## 8. Escalabilidad
 
-### 1. **Frontend (HTML5 + Vanilla JS)**
-
-**Archivos:**
-```
-frontend/
-├── index.html                    # UI principal
-├── montecarlo.html              # Dashboard resultados
-├── css/arcade.css               # Estilos tema oscuro/arcada
-├── js/
-│   ├── engine.js                # State machine simulación
-│   ├── manta-config.js          # Configuración rutas Manta
-│   ├── sprites.js               # Manejo sprites GIF
-│   ├── tailwind-config.js       # Configuración Tailwind
-│   └── audio.js                 # Efectos de sonido SFX
-└── assets/
-    └── manta_routes.js          # GeoJSON rutas OpenStreetMap
-```
-
-**Responsabilidades:**
-- Renderizar interfaz táctica
-- Dibujar agentes en mapa con Leaflet.js
-- Hacer polling a API REST
-- Animar sprites zombis/soldados
-- Mostrar gráficas Chart.js
-
----
-
-### 2. **Backend FastAPI (Python)**
-
-**main.py** - Servidor HTTP
-```python
-# Endpoints:
-GET  /api/health          # Healthcheck
-GET  /api/presets         # Obtener escenarios A/B/C
-GET  /api/state           # Estado actual
-
-POST /api/sim/reset       # Reinicia simulación
-POST /api/sim/scenario    # Carga parámetros escenario
-POST /api/sim/launch      # Inicia brote + MC
-POST /api/sim/tick        # Avanza 1 frame
-POST /api/sim/combat-hit  # Registra disparo
-POST /api/sim/airdrop     # Lanza antídoto
-
-GET  /api/montecarlo/status   # % completado
-GET  /api/montecarlo/results  # Resultados JSON
-```
-
----
-
-### 3. **Motor SEIR (engine.py)**
-
-```python
-class SeirSimulationEngine:
-    state = {
-        "day", "hour", "minute",
-        "healthy", "bitten", "infected", "immune",
-        "ammo", "cureCrates", "deaths", "r0", ...
-    }
-    
-    def reset()              # Reinicia estado
-    def launch_outbreak()    # Inicia con params
-    def tick()               # Avanza 1 frame (~10 min virtual)
-    def register_zombie_hit() # -1 ammo, -1 HP zombi
-    def deploy_airdrop()     # Cura infecciones
-```
-
-**Transiciones por tick:**
-1. Incubación: `E → I` (si período cumplido)
-2. Contagio: `S → E` (nuevo contacto)
-3. Combate: `I → Muerto` (si hay munición)
-4. Antídoto: `I → R` (si hay caja + lanzada)
-5. Síntesis: Genera 1 nueva caja cada 10 días
-
----
-
-### 4. **Monte Carlo (montecarlo.py)**
-
-```python
-class MonteCarloRunner:
-    def start(params, runs=400, seed=42)
-        # Inicia thread background
-        
-    def _simulate(rng, params, n)
-        # Vectorizado en NumPy:
-        # S, E, I, R = arrays[n, days+1]
-        # Para cada día:
-        #   - Contagio Poisson
-        #   - Incubación Binomial
-        #   - Combate Binomial
-        #   - Antídotos Binomial
-        
-    def _aggregate(chunks, params, runs, seed)
-        # Combina resultados:
-        # - Series temporales (mean, p5, p25, p75, p95)
-        # - Estadísticas: peakInfected, finalInfected, etc.
-        # - Histograma: distribución picos
-```
-
-**Rendimiento:**
-- 400 runs × 60 días: ~2 segundos (NumPy vectorizado)
-- Threading: No bloquea API principal
-- Reproducibilidad: Semilla `np.random.default_rng(42)`
-
----
-
-## Flujo de Datos: Específico
-
-### Línea Base: "No Intervenir"
-```
-t=0: S=270,900 | E=0 | I=1 | R=245 | Muertes=0
-
-t=1: S≈270,750 | E≈150 | I≈50 | R=245
-     (Contagio exponencial sin freno)
-     
-t=30: S≈100,000 | E≈5000 | I≈150,000 | R=245
-      (Pico de infecciones, crecimiento incontrolable)
-      
-t=60: S≈50,000 | E≈1000 | I≈5000 | R=245
-      (Mayoría se infectó, infección decae por falta de S)
-      
-Resultado: 220,000 infectados acumulados
-```
-
-### Línea Base: "Estrategia Óptima"
-```
-t=0: S=270,900 | E=0 | I=1 | R=245 | Munición=800 | Cajas=3
-
-t=5: Lanzar 1 caja
-     S≈270,800 | E≈100 | I≈30 | R≈300 (curados por antídoto)
-
-t=10: Combate + 2ª caja
-      I≈50 (abatidos por munición) | I→10 (por antídoto)
-      Munición=400 | Cajas=2
-      
-t=30: Síntesis genera caja 4
-      R≈10,000 (muchos curados)
-      I≈500 (contenido por intervención)
-      
-t=60: I≈100 | R≈50,000 | Munición≈50 (crítico)
-      
-Resultado: 50,000 infectados acumulados (77% menos que no intervenir)
-```
-
----
-
-## Escalabilidad Arquitectónica
-
-### Local (Ahora)
-- ✅ Backend: FastAPI en puerto 8080
-- ✅ Frontend: Archivos estáticos HTML/JS
-- ✅ Data: En memoria (Dict Python)
-- Límite: ~100 usuarios concurrentes
-
-### AWS Elastic Beanstalk (Corto Plazo)
-- Instancia t3.small: auto-scaling
-- ALB: distribución de carga
-- Data: Estado en memoria (sin persistencia)
-- Límite: ~500 usuarios concurrentes
-
-### AWS Serverless (Mediano Plazo)
-- Lambda: API sin servidor
-- S3 + CloudFront: Frontend + CDN
-- DynamoDB: Persistencia resultados
-- Step Functions: Orquestación MC paralelo
-- Límite: ~10,000 usuarios concurrentes
-
-### Multi-Región AWS (Largo Plazo)
-- Lambda + API Gateway en us-east-1, eu-west-1, ap-southeast-1
-- S3 replicación multi-región
-- DynamoDB global tables
-- Route 53: Geo-routing
-- Límite: Ilimitado (con costos >$5K/mes)
-
----
-
-## Seguridad
-
-### Actual (Demo)
-- ❌ Sin autenticación
-- ❌ CORS abierto (`["*"]`)
-- ✅ Sin credenciales en código
-- ✅ Sin inyección SQL (no hay BD)
-
-### Producción (Checklist)
-- [ ] API Key o JWT en headers
-- [ ] CORS restringido a dominio cliente
-- [ ] Rate limiting: 100 req/min por IP
-- [ ] HTTPS obligatorio
-- [ ] Logs de auditoría en CloudWatch
-- [ ] WAF en CloudFront (AWS)
-- [ ] Validación inputs + sanitización
-- [ ] Secrets en AWS Secrets Manager
-
----
-
-## Monitoreo & Observabilidad
-
-### Métricas Clave
-```
-CloudWatch Dashboards:
-- Lambda duration (p50, p95, p99)
-- S3 request rate
-- API response time
-- MC completion time
-- Errores y excepciones
-
-Alarmas:
-- Lambda errors > 1%
-- API latency > 5s
-- MC timeout > 60s
-- S3 403/404 rate > 5/min
-```
-
-### Logs
-```
-CloudWatch Logs:
-- /aws/lambda/mantazero-api
-- /aws/s3/mantazero-frontend
-- Application logs (FastAPI)
-- Errores de simulación SEIR
-```
-
----
-
-**Diagrama preparado:** 27 de octubre de 2026  
-**Versión:** 1.0  
-**Arquitecto:** Equipo bottitos-spookython
+| Etapa | Cambio | Límite principal |
+| :--- | :--- | :--- |
+| Actual | 1 tarea Fargate, estado en memoria | Una simulación compartida; no escala horizontalmente. |
+| Corto plazo | Estado por sesión (Redis/DynamoDB), N tareas detrás del ALB | Costo por tarea. |
+| Mediano plazo | Frontend en S3 + CloudFront; Monte Carlo en un worker o cola (SQS) | Latencia del Monte Carlo. |

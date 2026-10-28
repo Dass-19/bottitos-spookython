@@ -1,277 +1,243 @@
-# 🧟 MantaZero: Epidemic Command
-### Simulación Epidemiológica SEIR Estocástica + Intervención Táctica en Manta
-**Spookython 2026 · Track B: La Plaga Zombie**
+<p align="center">
+  <img src="frontend/assets/sprites/Zombie-Man-Walking.gif" height="64" alt="zombie">
+  <img src="frontend/assets/sprites/Zombie-Woman-Walking.gif" height="64" alt="zombie">
+  <img src="frontend/assets/sprites/Zombie-Fat-Walking.gif" height="64" alt="zombie">
+  <img src="frontend/assets/sprites/Zombie-Scientist-Walking.gif" height="64" alt="zombie">
+  &nbsp;&nbsp;&nbsp;
+  <img src="frontend/assets/sprites/Medicine.gif" height="48" alt="antídoto">
+</p>
+
+<h1 align="center">🧟 MantaZero: Epidemic Command 🎃</h1>
+
+<p align="center">
+Simulación epidemiológica SEIR estocástica con intervención táctica sobre la red vial de Manta, Ecuador.<br>
+🦇 Spookython 2026 · Track B: La Plaga Zombie 🕸️
+</p>
+
+<p align="center">
 
 [![AWS ECS Fargate](https://img.shields.io/badge/AWS-ECS%20Fargate%20(us--east--1)-FF9900?style=flat-square&logo=amazon-aws)](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)
 [![Python](https://img.shields.io/badge/Python-3.14-blue?style=flat-square&logo=python)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![NumPy](https://img.shields.io/badge/NumPy-SEIR%20Vectorizado-013243?style=flat-square&logo=numpy)](https://numpy.org/)
-[![Reproducible](https://img.shields.io/badge/Reproducibilidad-Seed%2042-success?style=flat-square)](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)
-[![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](LICENSE)
+[![FastAPI](https://img.shields.io/badge/FastAPI-%E2%89%A50.100-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![NumPy](https://img.shields.io/badge/NumPy-SEIR%20vectorizado-013243?style=flat-square&logo=numpy)](https://numpy.org/)
+[![Reproducible](https://img.shields.io/badge/Reproducibilidad-seed%2042-success?style=flat-square)](#-reproducibilidad)
+
+</p>
 
 ---
 
-## 🌐 Despliegue Activo en AWS (URL Pública)
+## ☁️ Despliegue
 
-> 🚀 **Aplicación Desplegada y Operativa:**  
-> **URL Pública:** **[http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)**  
-> **DNS Público AWS (ALB):** **[http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)**  
-> **Dashboard Monte Carlo:** **[http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/montecarlo](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/montecarlo)**  
-> **API Healthcheck:** `GET http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/api/health`
+| Recurso | Valor |
+| :--- | :--- |
+| Aplicación | http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/ |
+| Dashboard Monte Carlo | http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/montecarlo |
+| Healthcheck | `GET /api/health` |
+| Región | `us-east-1` (N. Virginia) |
+| Load Balancer | ALB `mantazero-alb`, listener HTTP :80 → contenedor :8080 |
+| Cluster | `mantazero-cluster` (ECS, launch type Fargate) |
+| Servicio activo | `maintazero-service` → task definition `mantazero:4` (0.25 vCPU, 512 MB) |
+| Servicio anterior | `mantazero-service` → `mantazero:1` |
+| Imagen | `028610956449.dkr.ecr.us-east-1.amazonaws.com/mantazero` (`python:3.14-slim`) |
+| Logs | CloudWatch `/ecs/mantazero` |
 
-### Detalles de la Infraestructura en AWS
-- **Plataforma:** AWS ECS (Elastic Container Service) con tipo de lanzamiento **AWS FARGATE** (Serverless).
-- **Región:** `us-east-1` (N. Virginia).
-- **Cluster:** `mantazero-cluster`
-- **Servicio:** `maintazero-service`
-- **Definición de Tarea:** `mantazero:4` (0.25 vCPU, 512 MB RAM, Healthcheck startPeriod=30s).
-- **Load Balancer (ALB):** `mantazero-alb-994615840.us-east-1.elb.amazonaws.com` (Puerto `80`)
-- **Repositorio ECR:** `028610956449.dkr.ecr.us-east-1.amazonaws.com/mantazero`
-- **Monitoreo & Logs:** Amazon CloudWatch (`/ecs/mantazero`).
+Uso medido en `maintazero-service` (CloudWatch, ventana de 3 h): CPU promedio ~2 % (pico 13.19 % durante el despliegue), memoria estable ~10 % (~51 MB de 512 MB).
 
----
+![ECS: servicios del cluster](docs/ecs-servicios.png)
 
-## 📋 ¿Qué es MantaZero?
-
-Una plaga biológica ficticia (plaga zombie) azota la ciudad costera de **Manta, Manabí**. El usuario lidera el **Comité de Contención**, cuya misión es decidir: **qué hacer, dónde intervenir y cuándo** para salvar al mayor número de vidas con recursos estrictamente limitados.
-
-### Problemática y Utilidad Real
-- **La Problemática:** En crisis sanitarias (como el COVID-19 o el Dengue estacional en Manabí), las autoridades deben decidir en tiempo récord cómo distribuir recursos escasos: a quién vacunar primero, qué sectores acordonar y dónde desplegar brigadas.
-- **La Utilidad Real:** MantaZero utiliza los mismos principios de modelado matemático de los ministerios de salud pública (SEIR estocástico sobre poblaciones y clusters urbanos) para comparar el impacto numérico de una estrategia inteligente frente a **no hacer nada** o **actuar al azar**.
+![ECS: CPU y memoria de maintazero-service](docs/ecs-health.png)
 
 ---
 
-## 🎮 Características Principales
+## 🧟‍♂️ Problema
 
-### 1. Cuatro Estados Epidemiológicos
-El sistema modela fielmente los 4 compartimentos epidemiológicos sugeridos en el reto, ilustrados en mapa con sprites pixel art y animaciones temáticas:
-- 🟢 **SANO (Susceptible):** Ciudadano no expuesto; puede ser contagiado según la densidad de zombis circundantes.
-- 🟡 **MORDIDO (Expuesto):** Infectado en periodo de incubación (5 a 15 s). No transmite aún, pero mutará inevitablemente si no recibe antídoto.
-- 🔴 **ZOMBIE (Infeccioso):** Vector de contagio activo. Ataca a sanos cercanos en un radio crítico.
-- 🟠 **EXORCIZADO (Curado / Inmune):** Individuo recuperado mediante cajas de antídoto o con inmunidad biológica previa; resistente a reinfecciones.
+Una plaga ficticia se propaga en Manta (271 145 hab.). El usuario dirige el comité de contención y decide dónde, cuándo y con qué recursos intervenir. El sistema cuantifica el efecto de cada estrategia frente a no intervenir o intervenir al azar, con el mismo enfoque SEIR estocástico que se usa para planificar la respuesta a brotes reales (COVID-19, dengue).
 
-### 2. Recursos Estrictamente Limitados
-- **Munición de Combate:** Personal de seguridad armado combate zombis. Cada zombi requiere **exactamente 8 disparos** para ser abatido. La munición es finita (400, 800 o 1,500 balas).
-- **Cajas de Antídoto (Airdrop):** Despliegue de cura que rescata simultáneamente a ciudadanos mordidos e infectados (stock inicial de 1 a 6 cajas).
-- **Laboratorio Central de Síntesis:** Produce 1 caja de antídoto adicional cada 10 días de simulación.
+## 🧪 Modelo
 
-### 3. Tres Escenarios Climáticos y de Desastre en Manta
-| Escenario | Desastre Asociado | Epicentro Inicial | Población Callejera | Personas Armadas | Incubación | Munición | Cajas Cura | $R_0$ |
+### 🩸 Compartimentos
+
+| Sprite | Estado | Compartimento | Comportamiento |
+| :---: | :--- | :--- | :--- |
+| <img src="frontend/assets/sprites/sano.gif" height="40" alt=""> | Sano | S | Susceptible; se contagia por contacto con infecciosos. |
+| <img src="frontend/assets/sprites/mordido.gif" height="40" alt=""> | Mordido | E | Incubación de 5–15 s (2.5–7.5 días). No transmite. |
+| <img src="frontend/assets/sprites/zombie.gif" height="40" alt=""> | Zombie | I | Infeccioso; contagia en un radio de contacto. |
+| <img src="frontend/assets/sprites/exorcizado.gif" height="40" alt=""> | Exorcizado | R | Curado por antídoto o inmune de inicio. Sin reinfección. |
+
+### 🔫 Recursos
+
+- 🔫 **Munición:** finita (400 / 800 / 1500). Un zombie cae al 8.º impacto (`ZOMBIE_MAX_HP = 8`); el servidor valida cada disparo en `/api/sim/combat-hit`.
+- 💉 **Antídoto (airdrop):** stock inicial de 1–6 cajas; cada caja mueve infectados a R.
+- 🧪 **Laboratorio:** sintetiza 1 caja adicional cada 10 días.
+
+### 🌋 Escenarios (`backend/presets.py`)
+
+| Escenario | Desastre | Epicentro | Agentes | Armados | Incubación | Munición | Cajas | R₀ |
 | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **A: Tsunami 7.8** | 🌊 Sismo y anegamiento costero | Mercado de Tarqui | 140 | 30 | 5s | 400 | 1 | 4.85 |
-| **B: Supertormenta** | ⛈️ El Niño y apagón eléctrico | Playa Murciélago | 95 | 25 | 9s | 800 | 3 | 2.35 |
-| **C: Marea Roja** | ☣️ Ciclón y bio-toxina marina | Puerto de Manta | 60 | 25 | 15s | 1500 | 6 | 1.15 |
+| A 🌊 | Sismo 7.8 + tsunami | Tarqui | 140 | 30 | 5 s | 400 | 1 | 4.85 |
+| B ⛈️ | Supertormenta El Niño + apagón | Murciélago | 95 | 25 | 9 s | 800 | 3 | 2.35 |
+| C ☣️ | Ciclón + marea roja | Puerto de Manta | 60 | 25 | 15 s | 1500 | 6 | 1.15 |
 
-### 4. Simulación Monte Carlo Vectorizada (Promedios y Rangos)
-Ejecución estocástica de **400 a 5,000 réplicas paralelas** sobre los **271,145 habitantes reales de Manta** en segundo plano (Python NumPy) reportando:
-- Promedio de pico de infecciones y día del pico.
-- Rangos y percentiles ($P_5, P_{25}, P_{75}, P_{95}$).
-- Probabilidad matemática de contención de la plaga.
-- Probabilidad y día promedio de agotamiento de munición.
+### 🎲 Monte Carlo
 
----
+Al lanzar un brote, `MonteCarloRunner` corre en un hilo aparte de 50 a 5000 réplicas (400 por defecto) de 60 días sobre los 271 145 habitantes, vectorizadas con NumPy. Devuelve:
 
-## 🎯 Comparación con las Dos Líneas Base (Requisito Obligatorio)
-
-El sistema evalúa el beneficio neto de la **Estrategia Propuesta** frente a las **dos líneas base** obligatorias con los mismos recursos iniciales:
-
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                    COMPARATIVA EPIDEMIOLÓGICA (60 DÍAS)                     │
-├───────────────────────┬───────────────┬────────────────┬─────────────────────┤
-│ Métrica Clave         │ No Intervenir │ Azar (Mismos)  │ Estrategia Propuesta│
-├───────────────────────┼───────────────┼────────────────┼─────────────────────┤
-│ Cajas de Antídoto     │ 0             │ Despliegue Azar│ Focalizado Hotspots │
-│ Uso de Munición       │ 0             │ Disperso       │ Concentrado Focos   │
-│ Cerco Vial E15/E30    │ Inactivo      │ Inactivo       │ Activo              │
-│ Infectados Acumulados │ ~220,000      │ ~145,000       │ ~48,000             │
-│ Vidas Salvadas Netas  │ 0 (Línea Base)│ +75,000 vidas  │ +172,000 vidas      │
-│ % Reducción Plaga     │ 0%            │ 34.1%          │ 78.2%               │
-└───────────────────────┴───────────────┴────────────────┴─────────────────────┘
-```
-
-1. **Línea Base 1 (No Intervenir):** Sin despliegue de antídotos ni combate armado. La plaga experimenta crecimiento logístico descontrolado hasta alcanzar el umbral de inmunidad de rebaño por agotamiento de susceptibles (~81% de la población contagiada).
-2. **Línea Base 2 (Intervenir al Azar con Mismos Recursos):** Las cajas de antídoto se lanzan en sectores aleatorios sin considerar la densidad de infectados, y el fuego de combate se dispersa sin concentración. Logra frenar temporalmente brotes aislados pero fracasa en contener epicentros de alta transmisibilidad.
-3. **Estrategia Propuesta (Focalizada e Inteligente):** Concentración de fuego en el paciente cero, airdrops en nodos de alta densidad (Mercado de Tarqui) y activación del cerco vial interparroquial. **Salva ~172,000 personas frente a no intervenir y ~97,000 personas adicionales frente a intervenir al azar**.
+- Series S/E/I/R por día: media, P5, P25, P75, P95.
+- Pico de infectados y día del pico, infectados finales, total contagiado, zombies abatidos, munición restante.
+- Probabilidad de contención (`I = 0` al día 60) y probabilidad y día de agotamiento de munición.
+- Histograma de picos.
 
 ---
 
-## 🎲 Reproducibilidad: Semilla y Parámetros por Defecto
+## ⚰️ Comparación con líneas base
 
-> 🧪 **Verificación de Reproducibilidad (Track B):**  
-> Misma configuración + misma semilla (`seed=42`) genera **exactamente el mismo resultado**.
+| Métrica (60 días) | No intervenir | Azar, mismos recursos | Estrategia propuesta |
+| :--- | :---: | :---: | :---: |
+| Antídoto | No | Sectores aleatorios | Focalizado en hotspots |
+| Munición | No | Dispersa | Concentrada en focos |
+| Cerco vial | Inactivo | Inactivo | Activo |
+| Infectados acumulados | ~220 000 | ~145 000 | ~48 000 |
+| Vidas salvadas vs. no intervenir | — | ~75 000 | ~172 000 |
+| Reducción | 0 % | 34.1 % | 78.2 % |
 
-### Parámetros por Defecto para Reproducir los Resultados
-```json
-{
-  "mcSeed": 42,
-  "mcRuns": 400,
-  "days": 60,
-  "censusPop": 271145,
-  "agentCount": 95,
-  "armedCount": 25,
-  "immunityRate": 0.08,
-  "incubationSeconds": 8.0,
-  "r0": 2.35,
-  "ammo": 800,
-  "cureCrates": 3,
-  "epicenter": "Tarqui",
-  "cercoVial": true
-}
-```
+1. **No intervenir:** sin antídoto ni combate. La curva crece hasta agotar susceptibles (~81 % contagiado).
+2. **Azar:** mismos recursos, lanzados sin mirar la densidad de infectados. Frena brotes aislados pero no los epicentros de alta transmisión.
+3. **Estrategia propuesta:** fuego concentrado sobre el paciente cero, airdrops en nodos densos (Tarqui) y cerco vial interparroquial.
 
-### Prueba de Reproducibilidad vía cURL
+> Valores de referencia. El Monte Carlo del backend simula la configuración lanzada; para comparar, lanza cada estrategia con la misma semilla y compara `summary.totalAttacked`.
+
+---
+
+## 🎲 Reproducibilidad
+
+Misma configuración + misma semilla ⇒ mismo resultado (`np.random.default_rng(seed)`, lotes secuenciales).
+
+R₀ no es un parámetro de `/api/sim/launch`: lo fija el escenario. Para reproducir:
+
 ```bash
-# Paso 1: Lanzar simulación con semilla fija 42
-curl -X POST http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/api/sim/launch \
-  -H "Content-Type: application/json" \
-  -d '{"mcSeed": 42, "mcRuns": 400, "epicenter": "Tarqui", "r0": 2.35, "ammo": 800, "cureCrates": 3}'
+BASE=http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com
 
-# Paso 2: Consultar resultados una vez completado
-curl http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/api/montecarlo/results
+curl -X POST $BASE/api/sim/reset
+curl -X POST $BASE/api/sim/scenario -H "Content-Type: application/json" -d '{"scenario": "B"}'   # R0 = 2.35
+curl -X POST $BASE/api/sim/launch -H "Content-Type: application/json" -d '{
+  "mcSeed": 42, "mcRuns": 400, "epicenter": "Tarqui",
+  "agentCount": 95, "armedCount": 25, "immunityRate": 0.08, "incubationSeconds": 8.0,
+  "ammo": 800, "cureCrates": 3, "isCarnaval": true, "isNight": false, "cercoVial": true
+}'
+
+curl $BASE/api/montecarlo/status    # esperar state = "done"
+curl $BASE/api/montecarlo/results   # 202 mientras corre
 ```
-*Al repetir esta petición con la semilla 42, la media de infectados, desviación estándar y percentiles coincidirán bit a bit.*
+
+Los campos omitidos en `launch` toman los valores por defecto de `LaunchRequest` (`backend/main.py`), no los del escenario.
 
 ---
 
-## 📊 Supuestos del Modelo y Origen de los Datos
+## 📜 Supuestos
 
-1. **Población Total de Manta:** **271,145 habitantes**, según el censo oficial del **INEC 2023** ([Instituto Nacional de Estadística y Censos](https://www.ecuadorencifras.gob.ec)).
-2. **Número Básico de Reproducción ($R_0$):**
-   - **Tsunami ($R_0 = 4.85$):** Basado en tasas de Influenza H1N1 y aglomeración severa en refugios post-desastre sísmico.
-   - **Supertormenta ($R_0 = 2.35$):** Basado en la cepa original del SARS-CoV-2 (COVID-19) según reportes de la OMS y CDC.
-   - **Marea Roja ($R_0 = 1.15$):** Brote biológico contenido con confinamiento y cordón sanitario.
-3. **Escala Temporal:** 1 segundo en la interfaz interactiva equivale aproximadamente a 0.5 días epidemiológicos. La incubación oscila entre 5s y 15s (2.5 a 7.5 días de incubación biológica real).
-4. **Capacidad de Fuego:** Se calibró a 8 disparos efectivos por zombi con probabilidad de impacto basada en la densidad de efectivos armados en el cuadrante.
+1. **Población:** 271 145 habitantes (censo INEC 2023).
+2. **R₀:** A = 4.85 (H1N1 con hacinamiento en refugios), B = 2.35 (SARS-CoV-2 cepa original, OMS/CDC), C = 1.15 (brote contenido con cordón sanitario).
+3. **Escala temporal:** 1 s de interfaz ≈ 0.5 días epidemiológicos.
+4. **Combate:** `p_kill = 1 − exp(−1.2 · armados / agentes)`; cada baja consume 10 balas en el Monte Carlo (8 impactos + 25 % de fallos).
+5. **Contagio:** `β = R₀ · mult / 5 días`, con `mult` ×1.3 en carnaval, ×1.1 de noche y ×0.7 con cerco vial.
 
----
+## 🕯️ Limitaciones
 
-## 🏗️ Arquitectura del Sistema
-
-El diagrama completo y detallado se encuentra en [docs/arquitectura.md](docs/arquitectura.md) y [docs/arquitectura.svg](docs/arquitectura.svg).
-
-![Arquitectura AWS](docs/arquitectura.svg)
-
-### Servicios AWS Empleados y Superficie de Exposición
-- **Público:** Puerto TCP 8080 expuesto mediante Elastic Network Interface (ENI) pública para servir el cliente web y la API REST.
-- **AWS ECS Fargate:** Orquestación serverless del contenedor Docker (`python:3.14-slim`).
-- **Amazon ECR:** Almacén privado de imágenes de contenedor.
-- **Amazon CloudWatch:** Registro centralizado de logs de aplicación (`/ecs/mantazero`).
-- **AWS IAM:** Rol de ejecución `ecsTaskExecutionRole` aplicando el principio de mínimo privilegio.
+1. Mezcla homogénea en el Monte Carlo; no se modelan hogares ni redes de contacto.
+2. Inmunidad permanente durante los 60 días.
+3. Detección perfecta de zombies sobre la red vial.
+4. Estado en memoria de un solo proceso: sin persistencia y una única simulación compartida por todos los clientes.
 
 ---
 
-## 💰 Declaración de Costos
+## 🏚️ Arquitectura
 
-El documento completo con el desglose formal se encuentra en [docs/costos.md](docs/costos.md).
+Detalle en [docs/arquitectura.md](docs/arquitectura.md). El diagrama completo y editable está en [docs/arquitectura.excalidraw](docs/arquitectura.excalidraw) (abrir en excalidraw.com).
 
-- **Costo Operacional Mensual (24/7 en ECS Fargate):** **$9.41 USD/mes**
-  - Cómputo Fargate (0.25 vCPU, 512 MB RAM): $8.89 USD
-  - Amazon ECR (200 MB de almacenamiento): $0.02 USD
-  - CloudWatch Logs (1 GB de logs ingestados): $0.50 USD
-  - Transferencia de Red: $0.00 USD (dentro de los 100 GB gratuitos de AWS)
-- **Gasto Real Acumulado durante el Evento (48 horas):** **~$0.63 USD** *(Costo cubierto en su totalidad por el Free Tier de AWS)*.
+| Capa | Tecnología |
+| :--- | :--- |
+| Cliente | HTML5, Vanilla JS, Leaflet 1.9.4 (tiles ArcGIS), Tailwind, Chart.js 4.4.1 |
+| API | FastAPI + Uvicorn, modelos Pydantic, frontend servido como estático |
+| Simulación | `SeirSimulationEngine` (estado en vivo), `MonteCarloRunner` (NumPy en hilo de fondo) |
+| Infraestructura | ECR → ECS Fargate detrás de un ALB, CloudWatch Logs, IAM `ecsTaskExecutionRole` |
 
----
-
-## 📸 AWS Budget y Alertas Configuradas
-
-En cumplimiento estricto con las reglas de Spookython 2026:
-> *"La cuenta DEBE tener un AWS Budget con alerta desde el primer día"*
-
-- **Nombre del Presupuesto:** `MantaZero-Spookython-Budget`
-- **Límite Mensual Asignado:** **$50.00 USD**
-- **Región:** `us-east-1`
-- **Alertas Automatizadas Configurada:**
-  - 🟡 Alerta al 25% ($12.50 USD) → Notificación informativa vía email.
-  - 🟠 Alerta al 50% ($25.00 USD) → Notificación de precaución.
-  - 🔴 Alerta al 80% ($40.00 USD) → Notificación crítica.
-  - 🛑 Alerta al 100% ($50.00 USD) → Límite presupuestario.
-- **Consumo Real del Evento:** $0.63 USD (**1.26% del presupuesto asignado**).
-
-![AWS Budget con Alerta](docs/budget.svg)
-
-*(Detalle financiero y auditoría disponible en [docs/costos.md](docs/costos.md)).*
+Exposición: el ALB recibe HTTP en :80 y reenvía al contenedor en :8080. No hay HTTPS (usa el DNS por defecto del ALB, sin certificado ACM) ni base de datos.
 
 ---
 
-## ⚠️ Limitaciones Conocidas
+## 💀 Costos
 
-1. **Supuesto de Mezcla Homogénea:** Para la escala masiva de 271,145 personas en Monte Carlo, se asume contacto estocástico entre compartimentos sin modelar la red interna de cada hogar individual.
-2. **Inmunidad Permanente:** Se asume que los individuos curados o inmunes retienen anticuerpos sin decaimiento temporal durante la ventana de 60 días de la crisis.
-3. **Visibilidad Completa de Zombis:** El radar militar asume detección inmediata de zombis en la red vial principal sin modelar zonas ocultas o túneles subterráneos.
+Desglose en [docs/costos.md](docs/costos.md).
+
+| Concepto | USD/mes (24/7) |
+| :--- | ---: |
+| Fargate, 1 tarea 0.25 vCPU / 0.5 GB | 8.89 |
+| Application Load Balancer (hora fija) | 16.20 |
+| IPv4 públicas (tarea + 2 nodos ALB) | 10.80 |
+| ECR (~200 MB) | 0.02 |
+| CloudWatch Logs (~1 GB) | 0.50 |
+| **Total** | **36.41** |
+
+Gasto real del mes según AWS Budgets: **$7.14**.
+
+## 🪦 AWS Budget
+
+Presupuesto `mantazero-budget`: cost budget mensual de $50.00 con alertas por email al 25 % ($12.50), 50 % ($25.00), 80 % ($40.00) y 100 % ($50.00). Estado actual: $7.14 (14.28 %), ningún umbral superado.
+
+![AWS Budget: estado](docs/budget-resumen.png)
+
+![AWS Budget: alertas](docs/budget-alertas.png)
 
 ---
 
-## 🚀 Instalación y Ejecución Local
+## 🔦 Ejecución local
 
-### 1. Clonar el repositorio
 ```bash
 git clone https://github.com/Dass-19/bottitos-spookython.git
 cd bottitos-spookython
-```
-
-### 2. Entorno virtual e instalación de dependencias
-```bash
-# Crear entorno virtual
 python -m venv venv
-
-# Activar en Windows PowerShell:
-.\venv\Scripts\Activate.ps1
-# Activar en Linux/macOS:
-source venv/bin/activate
-
-# Instalar dependencias
+source venv/bin/activate          # Windows: .\venv\Scripts\Activate.ps1
 pip install -r backend/requirements.txt
+python -m backend.main            # http://localhost:8080
 ```
 
-### 3. Iniciar el servidor
-```bash
-python -m backend.main
-```
-Abre tu navegador en: **http://localhost:8080**
+Con Docker:
 
-### 4. Ejecución mediante Docker
 ```bash
 docker build -t mantazero .
 docker run -p 8080:8080 mantazero
 ```
 
----
-
-## 📂 Estructura del Repositorio
+## 🗂️ Estructura
 
 ```
 bottitos-spookython/
-├── README.md                      # Documento principal y guía de entrega
-├── Dockerfile                     # Imagen de producción (python:3.14-slim)
-├── .dockerignore                  # Exclusiones de build
-├── .gitignore                     # Exclusiones de Git
-├── backend/                       # API FastAPI y Motor SEIR
-│   ├── main.py                    # Servidor REST y montaje de estáticos
-│   ├── engine.py                  # Motor SEIR táctico en memoria
-│   ├── montecarlo.py              # Simulación Monte Carlo vectorizada (NumPy)
-│   ├── presets.py                 # Datos de Manta y configuración de escenarios
-│   └── requirements.txt           # Dependencias Python (FastAPI, NumPy, Uvicorn)
-├── frontend/                      # Cliente web interactivo (Vanilla JS + Leaflet)
-│   ├── index.html                 # Radar táctico de Manta y HUD de comando
-│   ├── montecarlo.html            # Dashboard visual Monte Carlo (Chart.js)
-│   ├── css/arcade.css             # Estilos retro/arcade
-│   ├── js/                        # Controladores de simulación y audio
-│   └── assets/                    # GeoJSON de Manta y sprites de personajes
-├── docs/                          # Documentación formal de arquitectura y costos
-│   ├── arquitectura.md            # Diagramas detallados de software e infraestructura
-│   ├── arquitectura.svg           # Diagrama vectorial SVG de arquitectura AWS
-│   ├── costos.md                  # Declaración y desglose de costos operacionales
-│   └── budget.png                 # Captura de AWS Budget con alerta
-└── infra/                         # Definiciones de infraestructura y despliegue
+├── Dockerfile                 # python:3.14-slim, HEALTHCHECK /api/health
+├── backend/
+│   ├── main.py                # FastAPI: endpoints /api/*, estáticos
+│   ├── engine.py              # SeirSimulationEngine (estado en vivo)
+│   ├── montecarlo.py          # MonteCarloRunner (NumPy, hilo de fondo)
+│   ├── presets.py             # Escenarios A/B/C y constantes
+│   └── requirements.txt
+├── frontend/
+│   ├── index.html             # Mapa táctico y HUD
+│   ├── montecarlo.html        # Dashboard Monte Carlo
+│   ├── css/arcade.css
+│   ├── js/                    # engine.js, manta-config.js, sprites.js, audio.js
+│   └── assets/                # manta_routes.js (red vial) y sprites
+├── scripts/                   # generate_all_routes.js (OSRM), generar_sprites.py (PIL)
+├── infra/                     # buildspec.yml, deploy-ecs.ps1, ecs-task-definition.json
+└── docs/                      # Arquitectura, costos, diagramas y capturas de AWS
 ```
 
----
+## 👻 Equipo
 
-## 👥 Equipo y Contacto
+`bottitos-spookython` · Spookython 2026, Track B · ULEAM, Manta, Ecuador.
 
-- **Equipo:** `bottitos-spookython`
-- **Evento:** Spookython 2026 - Track B (La Plaga Zombie)
-- **Sede:** Universidad Laica Eloy Alfaro de Manabí (ULEAM) · Manta, Ecuador
-- **Licencia:** MIT License
+<p align="center">
+  <img src="frontend/assets/sprites/Zombie_Marco_Idle.gif" height="56" alt="zombie">
+  <img src="frontend/assets/sprites/Zombie_Eri_Idle.gif" height="56" alt="zombie">
+  <img src="frontend/assets/sprites/Zombie_Tarma_Idle.gif" height="56" alt="zombie">
+  <img src="frontend/assets/sprites/Zombie_Fio_Idle.gif" height="56" alt="zombie">
+  <br>🎃 🕷️ 🦇 🕸️ 🧟 🕯️ 💀
+</p>

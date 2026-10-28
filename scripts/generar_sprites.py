@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 W, H = 48, 56          # Cuadrícula de alta definición (más del doble de resolución que 32x40)
 SCALE = 5              # Factor de ampliación nearest-neighbour => 240 x 280 píxeles nítidos
-OUT = sys.argv[1] if len(sys.argv) > 1 else "assets/sprites"
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "assets", "sprites")
 
 # ---------------------------------------------------------------- PALETA TÁCTICA ARCADE
 PAL = {
