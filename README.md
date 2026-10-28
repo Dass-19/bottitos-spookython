@@ -63,12 +63,12 @@ Una plaga ficticia se propaga en Manta (271 145 hab.). El usuario dirige el comi
 | <img src="frontend/assets/sprites/sano.gif" height="40" alt=""> | Sano | S | Susceptible; se contagia por contacto con infecciosos. |
 | <img src="frontend/assets/sprites/mordido.gif" height="40" alt=""> | Mordido | E | Incubación de 5–15 s (2.5–7.5 días). No transmite. |
 | <img src="frontend/assets/sprites/zombie.gif" height="40" alt=""> | Zombie | I | Infeccioso; contagia en un radio de contacto. |
-| <img src="frontend/assets/sprites/exorcizado.gif" height="40" alt=""> | Exorcizado | R | Curado por antídoto o inmune de inicio. Sin reinfección. |
+| <img src="frontend/assets/sprites/exorcizado.gif" height="40" alt=""> | Exorcizado | R | Inmune de inicio. Un zombie lo intenta morder una sola vez y sigue de largo. |
 
 ### 🔫 Recursos
 
 - 🔫 **Munición:** finita (400 / 800 / 1500). Un zombie cae al 8.º impacto (`ZOMBIE_MAX_HP = 8`); el servidor valida cada disparo en `/api/sim/combat-hit`.
-- 💉 **Antídoto (airdrop):** stock inicial de 1–6 cajas; cada caja mueve infectados a R.
+- 💉 **Antídoto (airdrop):** stock inicial de 1–6 cajas; cada caja cura a mordidos y zombies (vuelven a S, sin inmunidad) y arma al 15 % de los curados (mínimo 1).
 - 🧪 **Laboratorio:** sintetiza 1 caja adicional cada 10 días.
 
 ### 🌋 Escenarios (`backend/presets.py`)
@@ -113,24 +113,26 @@ Al lanzar un brote, `MonteCarloRunner` corre en un hilo aparte de 50 a 5000 rép
 
 Misma configuración + misma semilla ⇒ mismo resultado (`np.random.default_rng(seed)`, lotes secuenciales).
 
-R₀ no es un parámetro de `/api/sim/launch`: lo fija el escenario. Para reproducir:
+El Monte Carlo es independiente del mapa (ADR-003): se lanza desde `/montecarlo` o por API, con uno o más escenarios. Cada parámetro numérico es un valor fijo o un rango `{min, max}` que se muestrea por corrida. Para reproducir:
 
 ```bash
 BASE=https://d25jz4tlj2zdm.cloudfront.net
 
-curl -X POST $BASE/api/sim/reset
-curl -X POST $BASE/api/sim/scenario -H "Content-Type: application/json" -d '{"scenario": "B"}'   # R0 = 2.35
-curl -X POST $BASE/api/sim/launch -H "Content-Type: application/json" -d '{
-  "mcSeed": 42, "mcRuns": 400, "epicenter": "Tarqui",
-  "agentCount": 95, "armedCount": 25, "immunityRate": 0.08, "incubationSeconds": 8.0,
-  "ammo": 800, "cureCrates": 3, "isCarnaval": true, "isNight": false, "cercoVial": true
+curl -X POST $BASE/api/montecarlo/run -H "Content-Type: application/json" -d '{
+  "runs": 400, "seed": 42,
+  "scenarios": [
+    {"name": "B fijo", "params": {"r0": 2.35, "agentCount": 95, "armedCount": 25, "immunityRate": 0.08,
+      "incubationSeconds": 8, "ammo": 800, "cureCrates": 3, "isNight": true, "cercoVial": true}},
+    {"name": "B incierto", "params": {"r0": {"min": 1.8, "max": 3.0}, "armedCount": {"min": 10, "max": 40},
+      "isNight": true, "cercoVial": true}}
+  ]
 }'
 
 curl $BASE/api/montecarlo/status    # esperar state = "done"
-curl $BASE/api/montecarlo/results   # 202 mientras corre
+curl $BASE/api/montecarlo/results   # 202 mientras corre; un resultado por escenario, con sensibilidad (Spearman)
 ```
 
-Los campos omitidos en `launch` toman los valores por defecto de `LaunchRequest` (`backend/main.py`), no los del escenario.
+Los parámetros omitidos toman los valores por defecto de `NUM_PARAMS` (`backend/montecarlo.py`).
 
 ---
 
@@ -145,7 +147,7 @@ Los campos omitidos en `launch` toman los valores por defecto de `LaunchRequest`
 ## 🕯️ Limitaciones
 
 1. Mezcla homogénea en el Monte Carlo; no se modelan hogares ni redes de contacto.
-2. Inmunidad permanente durante los 60 días.
+2. Inmunidad permanente durante los 60 días para los inmunes de inicio; los curados por antídoto pueden reinfectarse.
 3. Detección perfecta de zombies sobre la red vial.
 4. Estado en memoria de un solo proceso: sin persistencia y una única simulación compartida por todos los clientes.
 

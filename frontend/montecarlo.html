@@ -3,152 +3,579 @@
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>MantaZero: Epidemic Command - Dashboard Monte Carlo</title>
+  <title>MantaZero: Epidemic Command - Laboratorio Monte Carlo</title>
   <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;700&family=Russo+One&display=swap" rel="stylesheet"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/css/arcade.css"/>
+  <link rel="stylesheet" href="/css/arcade.css?v=20261028_help"/>
   <style>
-    body { font-family: 'Chakra Petch', sans-serif; }
+    :root {
+      --bg: #080c10;
+      --panel-line: rgba(148, 163, 184, 0.12);
+      --muted: #64748b;
+      --text: #cbd5e1;
+      --accent: #facc15;
+    }
+    body { font-family: 'Chakra Petch', sans-serif; background: var(--bg); color: var(--text); }
     .font-heavy { font-family: 'Russo One', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .eyebrow { font-family: 'Russo One', sans-serif; font-size: 10px; letter-spacing: .08em; color: var(--accent); text-transform: uppercase; }
+    .hint { font-size: 11px; color: var(--muted); }
+    .num { width: 100%; background: #0e151b; border: 1px solid #1f2a35; color: #a5f3fc; font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; padding: 3px 6px; border-radius: 4px; text-align: right; transition: border-color .15s; }
+    .num:focus { outline: none; border-color: #22d3ee; }
+    .num.bad { border-color: #ef4444; color: #fca5a5; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; border: 1px solid #1f2a35;
+      background: #0e151b; font-size: 10px; color: var(--text); cursor: pointer; transition: all .15s; user-select: none; }
+    .chip:hover { border-color: #334155; color: #fff; }
+    .chip.on { border-color: var(--c); color: #fff; background: color-mix(in srgb, var(--c) 18%, #0e151b); }
+    .seg { display: inline-flex; border: 1px solid #1f2a35; border-radius: 6px; overflow: hidden; }
+    .seg button { font-size: 10px; padding: 3px 8px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+    .seg button.on { background: #1e293b; color: #fff; }
+    .card { background: linear-gradient(180deg, rgba(19,27,34,.92), rgba(13,18,23,.95)); border: 1px solid var(--panel-line);
+      border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05); }
+    .chart-box { position: relative; height: 280px; }
+    .sev { font-size: 9px; padding: 2px 6px; border-radius: 4px; font-family: 'Russo One', sans-serif; letter-spacing: .06em; }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] .caret { transform: rotate(90deg); }
+    .caret { transition: transform .15s; display: inline-block; }
+    .guide li { margin-bottom: 6px; }
+    .guide b { color: #e2e8f0; }
   </style>
 </head>
-<body class="bg-[#080c10] text-slate-100 min-h-screen p-3 sm:p-5">
+<body class="min-h-screen px-3 py-4 sm:px-6 sm:py-6">
+  <div class="max-w-[1500px] mx-auto flex flex-col gap-5">
 
-  <header class="glass-panel rounded-lg px-4 py-2.5 flex items-center justify-between mb-4">
-    <div class="flex items-center gap-3">
-      <h1 class="arcade-title text-lg tracking-wider">MONTE CARLO // MantaZero: Epidemic Command</h1>
-      <span id="meta-badge" class="px-2 py-0.5 bg-cyan-950 border border-cyan-500/40 text-cyan-300 rounded text-[10px] font-mono">cargando…</span>
+  <!-- CABECERA -->
+  <header class="card px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="arcade-title text-xl sm:text-2xl tracking-wider">LABORATORIO MONTE CARLO</h1>
+      <p class="hint mt-1">MantaZero · modelo SEIR estocástico sobre la población real de Manta (271.145 hab.) · horizonte de 60 días</p>
     </div>
-    <a href="/" class="btn-arcade-gold px-3 py-1.5 rounded text-[10px] font-heavy">← VOLVER A LA SIMULACIÓN</a>
+    <div class="flex items-center gap-3">
+      <span id="meta-badge" class="mono text-[10px] text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 rounded px-2 py-1">sin corrida</span>
+      <a href="/" class="btn-arcade-gold px-3 py-1.5 rounded text-[10px]">← VOLVER AL MAPA</a>
+    </div>
   </header>
 
-  <div id="waiting" class="glass-panel rounded-lg p-8 text-center">
-    <p class="font-heavy text-amber-300 mb-3">Monte Carlo en ejecución…</p>
-    <div class="w-full max-w-md mx-auto h-3 bg-slate-900 border border-slate-700 rounded overflow-hidden">
-      <div id="wait-bar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400" style="width:0%"></div>
+  <!-- ESCENARIOS -->
+  <section class="card p-4 sm:p-5">
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+      <div>
+        <div class="eyebrow">1 · Escenarios</div>
+        <p class="hint mt-1">Cada parámetro es fijo (MIN = MAX) o un rango que se sortea en cada corrida. Pasa el cursor (o toca) <span class="help-dot" style="display:inline-flex">?</span> para ver qué hace cada cosa.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2" id="add-buttons"></div>
     </div>
-    <p id="wait-txt" class="font-mono text-xs text-slate-400 mt-2">0%</p>
-    <p class="text-[11px] text-slate-500 mt-3">Inicia una simulación desde la pantalla principal para generar resultados.</p>
+    <details class="mb-4 rounded-lg border border-slate-800 bg-black/30 px-3 py-2">
+      <summary class="flex items-center gap-2 text-[11px] text-slate-300"><span class="caret text-amber-300 text-[9px]">▶</span>
+        <span class="font-heavy">Guía rápida</span><span class="hint">cómo armar escenarios y leer los resultados</span></summary>
+      <div class="guide grid md:grid-cols-2 gap-x-8 text-[12px] text-slate-400 mt-3 pb-1">
+        <ul>
+          <li><b>Fijo o rango.</b> Si MIN = MAX el valor es fijo. Si MIN &lt; MAX, cada corrida sortea un valor dentro del rango: así modelas lo que no sabes con certeza (¿R0 es 2,8 o 3,8?).</li>
+          <li><b>Interruptores 🎭 🌙 🚧.</b> Cambian la velocidad de contagio: Carnaval ×1,3 · Noche ×1,1 · Cerco vial ×0,7. Se multiplican entre sí (Carnaval + Cerco = ×0,91).</li>
+          <li><b>Efecto umbral.</b> Cerca de R0 ≈ 3, un ±30 % de contagio cambia el pico más de 10 veces: el brote escapa a los armados o lo atrapan a tiempo.</li>
+          <li><b>Corridas y semilla.</b> Más corridas = percentiles más estables (400 suele bastar). La misma semilla reproduce exactamente el mismo resultado.</li>
+        </ul>
+        <ul>
+          <li><b>Pico de zombis.</b> Máximo de zombis activos a la vez en los 60 días. La barra P5–P95 es el rango donde cae el 90 % de las corridas.</li>
+          <li><b>Contención.</b> % de corridas que terminan con 0 zombis al día 60. Puede ser alta aunque el pico promedio sea grande: muchas corridas se apagan solas al inicio.</li>
+          <li><b>Sin munición.</b> % de corridas que se quedan sin balas; a partir de ahí ya nadie abate zombis.</li>
+          <li><b>¿Qué parámetro pesa más?</b> Solo para parámetros en rango. ρ cercano a ±1 = influye mucho; rojo (ρ &gt; 0) empeora el brote al subir; verde (ρ &lt; 0) lo frena.</li>
+        </ul>
+      </div>
+    </details>
+    <div id="scenarios" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3"></div>
+
+    <div class="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-slate-800/80">
+      <label class="hint flex items-center gap-2">Corridas por escenario
+        <input id="runs" type="number" min="50" max="5000" step="50" value="400" class="num !w-20"/></label>
+      <label class="hint flex items-center gap-2">Semilla NumPy
+        <input id="seed" type="number" min="0" value="42" class="num !w-20"/></label>
+      <div class="flex-1 min-w-[180px] flex items-center gap-3">
+        <div class="flex-1 h-2 bg-slate-900 border border-slate-800 rounded-full overflow-hidden">
+          <div id="bar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all" style="width:0%"></div>
+        </div>
+        <span id="status" class="mono text-[11px] text-slate-400 whitespace-nowrap">listo</span>
+      </div>
+      <button id="run-btn" onclick="run()" class="btn-arcade-green px-5 py-2 rounded text-[11px] font-heavy disabled:opacity-50">▶ EJECUTAR</button>
+    </div>
+  </section>
+
+  <!-- RESULTADOS -->
+  <main id="dash" class="hidden flex flex-col gap-5">
+    <div>
+      <div class="eyebrow mb-2">2 · Resultado por escenario</div>
+      <div id="summary-cards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"></div>
+    </div>
+
+    <div class="eyebrow -mb-2">3 · Comparativa</div>
+    <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div class="card p-4">
+        <div class="flex items-start justify-between gap-2 mb-3">
+          <div>
+            <h2 class="font-heavy text-[12px] text-white">Zombis activos por día</h2>
+            <p class="hint">Promedio (línea) y banda P5–P95 de las corridas</p>
+          </div>
+          <div class="seg" id="scale-i">
+            <button data-v="logarithmic" class="on">LOG</button><button data-v="linear">LINEAL</button>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="chart-i"></canvas></div>
+      </div>
+      <div class="card p-4">
+        <div class="mb-3">
+          <h2 class="font-heavy text-[12px] text-white">Pico de zombis</h2>
+          <p class="hint">Rango P5–P95 (barra) y promedio (punto) · escala logarítmica</p>
+        </div>
+        <div class="chart-box"><canvas id="chart-peak"></canvas></div>
+      </div>
+      <div class="card p-4">
+        <div class="mb-3">
+          <h2 class="font-heavy text-[12px] text-white">Probabilidades</h2>
+          <p class="hint">Contención: 0 zombis al día 60 · Munición agotada antes del día 60</p>
+        </div>
+        <div class="chart-box"><canvas id="chart-prob"></canvas></div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-start justify-between gap-2 mb-3">
+          <div>
+            <h2 class="font-heavy text-[12px] text-white">¿Qué parámetro pesa más?</h2>
+            <p class="hint">Correlación de Spearman ρ con el pico · <span class="text-red-400">rojo empeora</span> · <span class="text-emerald-400">verde mejora</span></p>
+          </div>
+          <select id="sens-select" class="bg-[#0e151b] border border-slate-700 text-[11px] rounded px-2 py-1 max-w-[180px]"></select>
+        </div>
+        <div class="chart-box"><canvas id="chart-sens"></canvas>
+          <p id="sens-empty" class="hidden absolute inset-0 flex items-center justify-center text-center hint px-6">Este escenario no tiene parámetros en rango.<br>Define MIN &lt; MAX para ver su sensibilidad.</p>
+        </div>
+      </div>
+    </section>
+
+    <details class="card p-4">
+      <summary class="flex items-center gap-2"><span class="caret text-amber-300">▶</span>
+        <span class="eyebrow">4 · Tabla detallada</span><span class="hint">promedio y rango P5–P95</span></summary>
+      <div class="overflow-x-auto mt-3"><table class="w-full text-[11px] mono text-right" id="kpi-table"></table></div>
+    </details>
+  </main>
   </div>
 
-  <main id="dash" class="hidden flex flex-col gap-4">
-    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="kpis"></section>
-
-    <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <div class="glass-panel rounded-lg p-3">
-        <h2 class="font-heavy text-[11px] text-amber-300 mb-2">ZOMBIS ACTIVOS (I) — PROMEDIO Y RANGO P5–P95 / P25–P75</h2>
-        <canvas id="chart-i" height="150"></canvas>
-      </div>
-      <div class="glass-panel rounded-lg p-3">
-        <h2 class="font-heavy text-[11px] text-amber-300 mb-2">COMPARTIMENTOS SEIR — PROMEDIO</h2>
-        <canvas id="chart-seir" height="150"></canvas>
-      </div>
-      <div class="glass-panel rounded-lg p-3">
-        <h2 class="font-heavy text-[11px] text-amber-300 mb-2">DISTRIBUCIÓN DEL PICO DE ZOMBIS</h2>
-        <canvas id="chart-hist" height="150"></canvas>
-      </div>
-      <div class="glass-panel rounded-lg p-3">
-        <h2 class="font-heavy text-[11px] text-amber-300 mb-2">PARÁMETROS DE LA CORRIDA</h2>
-        <table class="w-full text-[11px] font-mono" id="params-table"></table>
-      </div>
-    </section>
-
-    <section class="glass-panel rounded-lg p-3 overflow-x-auto">
-      <h2 class="font-heavy text-[11px] text-amber-300 mb-2">RESUMEN ESTADÍSTICO (PROMEDIOS Y RANGOS)</h2>
-      <table class="w-full text-[11px] font-mono text-right" id="summary-table"></table>
-    </section>
-  </main>
-
 <script>
+const PARAMS = [
+  // key, etiqueta, factor de UI (immunityRate se edita en %), step, ayuda
+  ['r0', 'R0', 1, 0.05, '<b>Número reproductivo básico.</b> Contagios que causa cada zombi en una población sin defensas. Por encima de ~3 el brote tiende a escapar a los armados.'],
+  ['immunityRate', 'Inmunidad natural %', 100, 1, '<b>Inmunes desde el inicio.</b> Nunca se infectan. Ojo: el antídoto cura pero <b>no</b> da inmunidad.'],
+  ['incubationSeconds', 'Incubación (s)', 1, 1, '<b>De mordido a zombi</b>, en segundos del mapa (1 s ≈ 0,5 días). Incubación larga = brote más lento y más tiempo para responder.'],
+  ['agentCount', 'Agentes en calle', 1, 5, '<b>Personas visibles en el mapa.</b> En el Monte Carlo solo cuenta para la proporción de armados (armados ÷ agentes), que se escala a los 271.145 habitantes.'],
+  ['armedCount', 'Personas armadas', 1, 1, '<b>Cuántos agentes tienen arma.</b> 20 de 95 ≈ 21 % de la población armada. Además, el 15 % de cada tanda de curados recibe arma.'],
+  ['ammo', 'Munición', 1, 50, '<b>Balas totales.</b> Cada zombi abatido cuesta ~10 (8 impactos + fallos). Sin balas, nadie más es abatido.'],
+  ['cureCrates', 'Cajas de antídoto', 1, 1, '<b>Cajas iniciales.</b> Cada 5 días se lanza una (si hay): cura al 25 % de mordidos y zombis, que vuelven a sanos, y arma al 15 % de los curados. El laboratorio suma 1 caja cada 10 días.'],
+];
+const FLAGS = [
+  ['isCarnaval', '🎭 Carnaval', '<b>Contagio ×1,3.</b> Multitudes en la calle: más contactos por persona. En «Respuesta táctica» el pico sube de ~630 a ~15.000 zombis.'],
+  ['isNight', '🌙 Noche', '<b>Contagio ×1,1.</b> Menos visibilidad: cuesta más ver venir a un zombi. En «Respuesta táctica» el pico sube de ~630 a ~3.100.'],
+  ['cercoVial', '🚧 Cerco vial', '<b>Contagio ×0,7.</b> Se cierran las salidas a Montecristi y San Mateo: menos movilidad. En «Respuesta táctica» el pico baja de ~630 a ~50.'],
+];
+const FLAGS_HELP = '<b>Interruptores de contexto.</b> Multiplican la velocidad de contagio y se combinan: Carnaval + Noche = ×1,43 · Carnaval + Cerco = ×0,91.';
+// Paleta por escenario: misma posición = mismo color en tarjetas, gráficos y tabla
+const PALETTE = ['#f87171', '#fbbf24', '#22d3ee', '#34d399', '#a78bfa', '#f472b6', '#60a5fa', '#94a3b8'];
+const MAX_SCENARIOS = 8;
 const fmt = n => Math.round(n).toLocaleString('es-EC');
-const COLORS = { S:'#22c55e', E:'#f59e0b', I:'#ef4444', R:'#facc15' };
+const pct = x => (x * 100).toFixed(x >= 0.995 || x <= 0.005 ? 0 : 1) + '%';
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const alpha = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0');
+const color = i => PALETTE[i % PALETTE.length];
+// Etiquetas largas del eje X partidas en líneas
+const wrap = (s, n = 16) => s.split(' ').reduce((ls, w) =>
+  (ls.length && (ls[ls.length - 1] + ' ' + w).length <= n ? (ls[ls.length - 1] += ' ' + w) : ls.push(w), ls), []);
+
 Chart.defaults.color = '#94a3b8';
-Chart.defaults.borderColor = 'rgba(148,163,184,0.12)';
+Chart.defaults.borderColor = 'rgba(148,163,184,0.08)';
+Chart.defaults.font.family = "'Chakra Petch', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.maintainAspectRatio = false;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.boxWidth = 8;
+Chart.defaults.plugins.legend.labels.boxHeight = 8;
+Chart.defaults.plugins.tooltip.backgroundColor = '#0b1117';
+Chart.defaults.plugins.tooltip.borderColor = '#334155';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.titleFont = { family: "'Russo One', sans-serif", size: 11 };
+Chart.defaults.plugins.tooltip.bodyFont = { family: "'JetBrains Mono', monospace", size: 11 };
+const monoTicks = { font: { family: "'JetBrains Mono', monospace", size: 10 } };
+const logTicks = { ...monoTicks, callback: v => Number.isInteger(Math.log10(v)) ? fmt(v) : '' };
+
+// Escenarios demo: todos con rangos, de más grave a más controlado (ajustados para que las curvas se separen)
+const DEMO = [
+  { name: 'Carnaval sin control', flags: { isCarnaval: true, isNight: false, cercoVial: false },
+    ranges: { r0: [3.2, 4.2], immunityRate: [0.03, 0.08], incubationSeconds: [5, 9], agentCount: [95, 95],
+      armedCount: [5, 15], ammo: [300, 800], cureCrates: [0, 2] } },
+  { name: 'Respuesta táctica', flags: { isCarnaval: false, isNight: false, cercoVial: false },
+    ranges: { r0: [2.8, 3.8], immunityRate: [0.05, 0.10], incubationSeconds: [6, 10], agentCount: [95, 95],
+      armedCount: [12, 30], ammo: [600, 2000], cureCrates: [1, 4] } },
+  { name: 'Cerco + antídoto', flags: { isCarnaval: false, isNight: false, cercoVial: true },
+    ranges: { r0: [3.2, 4.2], immunityRate: [0.05, 0.10], incubationSeconds: [6, 12], agentCount: [95, 95],
+      armedCount: [8, 20], ammo: [500, 1200], cureCrates: [3, 8] } },
+  { name: 'Ciudad blindada', flags: { isCarnaval: false, isNight: false, cercoVial: true },
+    ranges: { r0: [2.2, 3.2], immunityRate: [0.08, 0.16], incubationSeconds: [8, 14], agentCount: [95, 95],
+      armedCount: [25, 40], ammo: [1500, 3000], cureCrates: [4, 8] } },
+];
+
+let presets = {};
+let scenarios = [];   // [{name, ranges: {key: [min, max]}, flags: {key: bool}}]
+let charts = {};
+let lastResults = null;
+let myRunId = null;
+let scaleI = 'logarithmic';
+
+function fromPreset(p) {
+  const v = { r0: p.r0, immunityRate: p.immunityPct / 100, incubationSeconds: p.incubationSec,
+    agentCount: p.agents, armedCount: p.armed, ammo: p.ammo, cureCrates: p.crates };
+  return {
+    name: p.name.replace(/^[^\wÁÉÍÓÚÑ]+/u, '').trim(),
+    ranges: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, [x, x]])),
+    flags: { isCarnaval: !!p.isCarnaval, isNight: !!p.isNight, cercoVial: !!p.cercoVial },
+  };
+}
+
+function blank() {
+  return structuredClone({ ...DEMO[1], name: 'Escenario ' + (scenarios.length + 1) });
+}
+
+function addScenario(sc) {
+  if (scenarios.length >= MAX_SCENARIOS) return setStatus('máximo ' + MAX_SCENARIOS + ' escenarios');
+  scenarios.push(sc);
+  renderScenarios();
+}
+
+function loadDemo() {
+  scenarios = structuredClone(DEMO);
+  renderScenarios();
+}
+
+function renderAddButtons() {
+  const btn = (label, js, title = '') =>
+    `<button class="btn-arcade-dark px-2.5 py-1 rounded text-[10px] font-heavy" title="${title}" onclick="${js}">${label}</button>`;
+  document.getElementById('add-buttons').innerHTML = [
+    btn('★ DEMO', 'loadDemo()', 'Restaurar los 4 escenarios de demostración'),
+    ...Object.keys(presets).map(id => btn('+ ' + id, `addScenario(fromPreset(presets['${id}']))`, presets[id].name)),
+    btn('+ NUEVO', 'addScenario(blank())', 'Escenario nuevo con rangos'),
+  ].join('');
+}
+
+function renderScenarios() {
+  document.getElementById('scenarios').innerHTML = scenarios.map((sc, i) => `
+    <div class="rounded-lg border border-slate-800 bg-black/40 p-3" style="box-shadow: inset 0 3px 0 ${color(i)}">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${color(i)}"></span>
+        <input value="${esc(sc.name)}" maxlength="60" oninput="scenarios[${i}].name=this.value" aria-label="Nombre del escenario"
+          class="flex-1 min-w-0 bg-transparent border-b border-transparent hover:border-slate-700 focus:border-slate-500 outline-none text-[12px] font-heavy text-white"/>
+        <button title="Duplicar" aria-label="Duplicar" class="text-slate-500 hover:text-cyan-300 text-sm" onclick="addScenario(structuredClone(scenarios[${i}]))">⧉</button>
+        <button title="Eliminar" aria-label="Eliminar" class="text-slate-500 hover:text-red-400 text-sm" onclick="scenarios.splice(${i},1);renderScenarios()">✕</button>
+      </div>
+      <div class="grid grid-cols-[1fr_68px_68px] gap-x-1.5 gap-y-1 items-center text-[11px]">
+        <span></span><span class="hint text-right text-[9px]">MIN</span><span class="hint text-right text-[9px]">MAX</span>
+        ${PARAMS.map(([k, label, f, step, help]) => `
+          <span class="flex items-center gap-1 min-w-0"><span class="text-slate-400 truncate">${label}</span>
+            <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: ${label}" data-help="${esc(help)}">?</span></span>
+          ${[0, 1].map(j => `<input type="number" step="${step}" class="num" data-i="${i}" data-k="${k}" data-j="${j}" aria-label="${label} ${j ? 'máx' : 'mín'}"
+            value="${+(sc.ranges[k][j] * f).toFixed(4)}" oninput="setRange(this, ${f})"/>`).join('')}`).join('')}
+      </div>
+      <div class="flex flex-wrap gap-1.5 mt-3">
+        ${FLAGS.map(([k, label, help]) => `<span role="switch" tabindex="0" aria-checked="${!!sc.flags[k]}" data-help="${esc(help)}" class="chip ${sc.flags[k] ? 'on' : ''}" style="--c:${color(i)}"
+          onclick="toggleFlag(${i}, '${k}')" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleFlag(${i}, '${k}')}">${label}</span>`).join('')}
+        <span class="help-dot self-center" tabindex="0" role="button" aria-label="Ayuda: interruptores" data-help="${esc(FLAGS_HELP)}">?</span>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('[data-k]').forEach(markBad);
+}
+
+function toggleFlag(i, k) {
+  scenarios[i].flags[k] = !scenarios[i].flags[k];
+  renderScenarios();
+}
+
+function setRange(el, f) {
+  const sc = scenarios[+el.dataset.i];
+  sc.ranges[el.dataset.k][+el.dataset.j] = parseFloat(el.value) / f;
+  document.querySelectorAll(`[data-i="${el.dataset.i}"][data-k="${el.dataset.k}"]`).forEach(markBad);
+}
+
+function markBad(el) {
+  const [lo, hi] = scenarios[+el.dataset.i].ranges[el.dataset.k];
+  el.classList.toggle('bad', !(lo <= hi));
+}
+
+function payload() {
+  return {
+    runs: parseInt(document.getElementById('runs').value, 10),
+    seed: parseInt(document.getElementById('seed').value, 10),
+    scenarios: scenarios.map(sc => ({
+      name: sc.name || 'sin nombre',
+      params: {
+        ...Object.fromEntries(Object.entries(sc.ranges).map(([k, [lo, hi]]) =>
+          [k, lo === hi ? lo : { min: lo, max: hi }])),
+        ...sc.flags,
+      },
+    })),
+  };
+}
+
+function setStatus(text, p) {
+  document.getElementById('status').innerText = text;
+  if (p !== undefined) document.getElementById('bar').style.width = p + '%';
+}
+
+function fail(msg) {
+  document.getElementById('run-btn').disabled = false;
+  setStatus(msg, 0);
+}
+
+async function run() {
+  if (!scenarios.length) return setStatus('agrega al menos un escenario');
+  if (document.querySelector('.num.bad')) return setStatus('hay rangos con MIN > MAX');
+  document.getElementById('run-btn').disabled = true;
+  setStatus('lanzando…', 0);
+  try {
+    const r = await fetch('/api/montecarlo/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload()),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      return fail(Array.isArray(body.detail) ? body.detail.map(d => d.msg).join(' · ') : 'error ' + r.status);
+    }
+    myRunId = body.runId;
+    poll();
+  } catch (_) {
+    fail('error de red: no se pudo lanzar la corrida');
+  }
+}
 
 async function poll() {
-  const r = await fetch('/api/montecarlo/results');
-  if (r.status === 200) { render(await r.json()); return; }
-  const st = await r.json().catch(() => ({}));
-  const pct = Math.round((st.progress || 0) * 100);
-  document.getElementById('wait-bar').style.width = pct + '%';
-  document.getElementById('wait-txt').innerText =
-    st.state === 'idle' ? 'Sin corrida activa' : pct + '%';
-  setTimeout(poll, 1500);
+  try {
+    const r = await fetch('/api/montecarlo/results');
+    if (r.status === 200) {
+      const d = await r.json();
+      if (myRunId && d.meta.runId !== myRunId) return fail('tu corrida fue reemplazada por otra');
+      setStatus('listo', 100);
+      document.getElementById('run-btn').disabled = false;
+      return render(d);
+    }
+    if (r.status !== 202) return fail('error del servidor (' + r.status + ')');
+    const st = await r.json();
+    if (myRunId && st.runId && st.runId !== myRunId) return fail('tu corrida fue reemplazada por otra');
+    if (st.state === 'error') return fail('error: ' + (st.error || ''));
+    const p = Math.round((st.progress || 0) * 100);
+    setStatus(st.state === 'running' ? `ejecutando… ${p}%` : 'listo', p);
+    if (st.state === 'running') setTimeout(poll, 500);
+  } catch (_) {
+    fail('error de red: reintenta');
+  }
+}
+
+function chart(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+
+const SEV_HELP = '<b>Gravedad según el pico promedio.</b> CRÍTICO ≥ 10.000 zombis · ALTO ≥ 500 · MODERADO ≥ 20 · CONTENIDO &lt; 20.';
+
+function severity(s) {
+  const peak = s.peakInfected.mean;
+  if (peak >= 10000) return ['CRÍTICO', '#f87171'];
+  if (peak >= 500) return ['ALTO', '#fbbf24'];
+  if (peak >= 20) return ['MODERADO', '#22d3ee'];
+  return ['CONTENIDO', '#34d399'];
 }
 
 function render(d) {
-  document.getElementById('waiting').classList.add('hidden');
+  lastResults = d;
   document.getElementById('dash').classList.remove('hidden');
   document.getElementById('meta-badge').innerText =
-    `${d.meta.runs} corridas · semilla NumPy ${d.meta.seed} · ${d.meta.days} días`;
-  const s = d.summary;
-  const kpis = [
-    ['PICO DE ZOMBIS (PROM.)', fmt(s.peakInfected.mean), `rango ${fmt(s.peakInfected.p5)} – ${fmt(s.peakInfected.p95)}`, 'text-red-400'],
-    ['DÍA DEL PICO (PROM.)', s.peakDay.mean.toFixed(1), `rango ${s.peakDay.p5.toFixed(0)} – ${s.peakDay.p95.toFixed(0)}`, 'text-amber-300'],
-    ['ZOMBIS ABATIDOS (PROM.)', fmt(s.zombiesKilled.mean), `rango ${fmt(s.zombiesKilled.p5)} – ${fmt(s.zombiesKilled.p95)}`, 'text-emerald-400'],
-    ['PROB. DE CONTENCIÓN', (s.containmentProbability * 100).toFixed(1) + '%', 'zombis = 0 al día ' + d.meta.days, 'text-cyan-300'],
-    ['AFECTADOS TOTALES (PROM.)', fmt(s.totalAttacked.mean), `rango ${fmt(s.totalAttacked.p5)} – ${fmt(s.totalAttacked.p95)}`, 'text-red-300'],
-    ['MUNICIÓN RESTANTE (PROM.)', fmt(s.ammoLeft.mean), `rango ${fmt(s.ammoLeft.p5)} – ${fmt(s.ammoLeft.p95)}`, 'text-cyan-300'],
-    ['PROB. MUNICIÓN AGOTADA', (s.ammoExhaustedProbability * 100).toFixed(1) + '%', s.ammoExhaustedDay ? 'día prom. ' + s.ammoExhaustedDay.mean.toFixed(1) : 'nunca', 'text-amber-300'],
-    ['ZOMBIS FINALES (PROM.)', fmt(s.finalInfected.mean), `rango ${fmt(s.finalInfected.p5)} – ${fmt(s.finalInfected.p95)}`, 'text-red-400'],
-  ];
-  document.getElementById('kpis').innerHTML = kpis.map(k => `
-    <div class="glass-panel rounded-lg p-3">
-      <div class="text-[9px] font-heavy text-slate-400">${k[0]}</div>
-      <div class="font-mono font-extrabold text-2xl ${k[3]}">${k[1]}</div>
-      <div class="text-[10px] font-mono text-slate-500">${k[2]}</div>
-    </div>`).join('');
+    `${d.scenarios.length} escenarios · ${d.meta.runs} corridas c/u · semilla ${d.meta.seed}`;
+  const S = d.scenarios;
+  const labels = S.map(s => wrap(s.name, 12));
 
-  const days = d.series.I.mean.map((_, i) => i);
-  const I = d.series.I;
-  new Chart(document.getElementById('chart-i'), {
-    type: 'line',
-    data: { labels: days, datasets: [
-      { label: 'P95', data: I.p95, borderColor: 'rgba(239,68,68,0.35)', borderDash: [4,3], pointRadius: 0, fill: false },
-      { label: 'P75', data: I.p75, borderColor: 'rgba(239,68,68,0.15)', backgroundColor: 'rgba(239,68,68,0.10)', pointRadius: 0, fill: '+1' },
-      { label: 'P25', data: I.p25, borderColor: 'rgba(239,68,68,0.15)', pointRadius: 0, fill: false },
-      { label: 'P5',  data: I.p5,  borderColor: 'rgba(239,68,68,0.35)', borderDash: [4,3], pointRadius: 0, fill: false },
-      { label: 'Promedio', data: I.mean, borderColor: COLORS.I, borderWidth: 2.5, pointRadius: 0, fill: false },
-    ]},
-    options: { plugins: { legend: { labels: { boxWidth: 10 } } }, scales: { x: { title: { display: true, text: 'Día' } } } }
-  });
+  // Tarjetas resumen
+  document.getElementById('summary-cards').innerHTML = S.map((s, i) => {
+    const m = s.summary;
+    const [sev, sevC] = severity(m);
+    const stat = (label, value, sub = '') => `<div><div class="hint text-[10px]">${label}</div>
+      <div class="mono text-[13px] text-white">${value}</div>${sub ? `<div class="hint text-[10px] mono">${sub}</div>` : ''}</div>`;
+    return `<div class="card p-4" style="box-shadow: inset 0 3px 0 ${color(i)}, 0 4px 20px rgba(0,0,0,.45)">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full" style="background:${color(i)}"></span>
+        <span class="font-heavy text-[12px] text-white truncate flex-1">${esc(s.name)}</span>
+        <span class="sev" tabindex="0" data-help="${esc(SEV_HELP)}" style="color:${sevC}; background:${alpha(sevC, .12)}; border:1px solid ${alpha(sevC, .4)}">${sev}</span>
+      </div>
+      <div class="hint text-[10px]">Pico de zombis (promedio)</div>
+      <div class="mono text-3xl font-bold leading-tight" style="color:${color(i)}">${fmt(m.peakInfected.mean)}</div>
+      <div class="hint mono text-[10px] mb-3">P5–P95: ${fmt(m.peakInfected.p5)} – ${fmt(m.peakInfected.p95)} · día ${m.peakDay.mean.toFixed(0)}</div>
+      <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800">
+        ${stat('Contención', pct(m.containmentProbability))}
+        ${stat('Afectados', fmt(m.totalAttacked.mean))}
+        ${stat('Sin munición', pct(m.ammoExhaustedProbability))}
+      </div>
+    </div>`;
+  }).join('');
 
-  new Chart(document.getElementById('chart-seir'), {
-    type: 'line',
-    data: { labels: days, datasets: ['S','E','I','R'].map(k => ({
-      label: {S:'Sanos',E:'Mordidos',I:'Zombis',R:'Curados/Inmunes'}[k],
-      data: d.series[k].mean, borderColor: COLORS[k], pointRadius: 0, borderWidth: 2, fill: false })) },
-    options: { scales: { y: { type: 'logarithmic', min: 1 }, x: { title: { display: true, text: 'Día' } } } }
-  });
+  renderI();
 
-  const h = d.histogram.peakInfected;
-  new Chart(document.getElementById('chart-hist'), {
+  // Pico: barra flotante P5–P95 + promedio, en log
+  chart('chart-peak', {
     type: 'bar',
-    data: { labels: h.counts.map((_, i) => `${fmt(h.edges[i])}–${fmt(h.edges[i+1])}`),
-            datasets: [{ label: 'Corridas', data: h.counts, backgroundColor: 'rgba(239,68,68,0.6)' }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 60, font: { size: 9 } } } } }
+    data: { labels, datasets: [
+      { label: 'P5–P95', data: S.map(s => [Math.max(1, s.summary.peakInfected.p5), Math.max(1, s.summary.peakInfected.p95)]),
+        backgroundColor: S.map((_, i) => alpha(color(i), .35)), borderColor: S.map((_, i) => color(i)),
+        borderWidth: 1.5, borderRadius: 4, borderSkipped: false, minBarLength: 6, barPercentage: .55 },
+      { type: 'scatter', label: 'Promedio', data: S.map((s, i) => ({ x: i, y: Math.max(1, s.summary.peakInfected.mean) })),
+        backgroundColor: '#fff', borderColor: '#0b1117', borderWidth: 2, pointRadius: 6, pointHoverRadius: 8 },
+    ] },
+    options: {
+      plugins: {
+        legend: { labels: { generateLabels: () => [
+          { text: 'P5–P95', fillStyle: alpha('#cbd5e1', .35), strokeStyle: '#cbd5e1', lineWidth: 1, pointStyle: 'rect', fontColor: '#94a3b8' },
+          { text: 'Promedio', fillStyle: '#fff', strokeStyle: '#fff', pointStyle: 'circle', fontColor: '#94a3b8' },
+        ] } },
+        tooltip: { callbacks: { label: c => c.dataset.type === 'scatter'
+        ? ` promedio: ${fmt(c.parsed.y)}` : ` P5–P95: ${fmt(c.raw[0])} – ${fmt(c.raw[1])}` } } },
+      scales: { x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 0, font: { size: 10 } } },
+        y: { type: 'logarithmic', min: 0.8, ticks: logTicks, title: { display: true, text: 'zombis' } } },
+    },
   });
 
-  const p = d.meta.params;
-  const rows = [
-    ['Escenario', p.currentScenario], ['Epicentro', p.activeEpicenter],
-    ['Población', fmt(p.totalPop)], ['Inmunidad natural', (p.immunityRate*100).toFixed(0)+'%'],
-    ['Personas armadas', p.armedCount], ['Munición', p.ammo], ['Cajas de antídoto', p.cureCrates],
-    ['Incubación', p.incubationSeconds + ' s'], ['R0', p.r0],
-    ['Carnaval / Noche / Cerco', [p.isCarnaval, p.isNight, p.cercoVial].map(b => b ? 'ON' : 'OFF').join(' / ')],
-  ];
-  document.getElementById('params-table').innerHTML = rows.map(r =>
-    `<tr class="border-b border-slate-800"><td class="py-1 text-slate-400">${r[0]}</td><td class="py-1 text-right text-white">${r[1]}</td></tr>`).join('');
+  // Probabilidades: barras horizontales por escenario
+  chart('chart-prob', {
+    type: 'bar',
+    data: { labels: S.map(s => s.name), datasets: [
+      { label: 'Contención', data: S.map(s => +(s.summary.containmentProbability * 100).toFixed(1)),
+        backgroundColor: S.map((_, i) => color(i)), borderRadius: 3, barPercentage: .8, categoryPercentage: .7 },
+      { label: 'Munición agotada', data: S.map(s => +(s.summary.ammoExhaustedProbability * 100).toFixed(1)),
+        backgroundColor: S.map((_, i) => alpha(color(i), .25)), borderColor: S.map((_, i) => color(i)),
+        borderWidth: 1, borderRadius: 3, barPercentage: .8, categoryPercentage: .7 },
+    ] },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { labels: { generateLabels: () => [
+          { text: 'Contención', fillStyle: '#cbd5e1', strokeStyle: '#cbd5e1', pointStyle: 'rect', fontColor: '#94a3b8' },
+          { text: 'Munición agotada', fillStyle: alpha('#cbd5e1', .25), strokeStyle: '#cbd5e1', lineWidth: 1, pointStyle: 'rect', fontColor: '#94a3b8' },
+        ] } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.x}%` } },
+      },
+      scales: { x: { min: 0, max: 100, ticks: { ...monoTicks, callback: v => v + '%' } },
+        y: { grid: { display: false }, ticks: { callback: (_, i) => wrap(S[i].name, 22) } } },
+    },
+  });
 
-  const names = { peakInfected:'Pico de zombis', peakDay:'Día del pico', finalInfected:'Zombis finales',
-    totalAttacked:'Afectados totales', zombiesKilled:'Zombis abatidos', ammoLeft:'Munición restante' };
-  document.getElementById('summary-table').innerHTML =
-    '<tr class="text-slate-400 border-b border-slate-700"><th class="text-left py-1">Métrica</th><th>Promedio</th><th>Desv. est.</th><th>Mín</th><th>P5</th><th>P95</th><th>Máx</th></tr>' +
-    Object.keys(names).map(k => { const x = s[k];
-      return `<tr class="border-b border-slate-800"><td class="text-left py-1">${names[k]}</td><td class="text-amber-300">${fmt(x.mean)}</td><td>${fmt(x.std)}</td><td>${fmt(x.min)}</td><td>${fmt(x.p5)}</td><td>${fmt(x.p95)}</td><td>${fmt(x.max)}</td></tr>`; }).join('');
+  // Tabla detallada
+  const rows = [
+    ['Pico de zombis', s => s.peakInfected, fmt],
+    ['Día del pico', s => s.peakDay, x => x.toFixed(1)],
+    ['Afectados totales', s => s.totalAttacked, fmt],
+    ['Zombis abatidos', s => s.zombiesKilled, fmt],
+    ['Zombis al día 60', s => s.finalInfected, fmt],
+    ['Munición restante', s => s.ammoLeft, fmt],
+  ];
+  document.getElementById('kpi-table').innerHTML =
+    `<tr class="text-slate-500 border-b border-slate-800"><th class="text-left py-2 font-normal">Métrica</th>${S.map((s, i) =>
+      `<th class="px-3 py-2 font-heavy text-[10px]" style="color:${color(i)}">${esc(s.name)}</th>`).join('')}</tr>` +
+    rows.map(([label, get, f]) => `<tr class="border-b border-slate-800/60"><td class="text-left py-2 text-slate-400">${label}</td>${S.map(s => {
+      const x = get(s.summary);
+      return `<td class="px-3 py-2"><span class="text-white">${f(x.mean)}</span><br><span class="text-slate-500 text-[10px]">${f(x.p5)} – ${f(x.p95)}</span></td>`;
+    }).join('')}</tr>`).join('') +
+    `<tr class="border-b border-slate-800/60"><td class="text-left py-2 text-slate-400">Prob. contención</td>${S.map(s =>
+      `<td class="px-3 py-2 text-white">${pct(s.summary.containmentProbability)}</td>`).join('')}</tr>` +
+    `<tr><td class="text-left py-2 text-slate-400">Prob. munición agotada</td>${S.map(s =>
+      `<td class="px-3 py-2 text-white">${pct(s.summary.ammoExhaustedProbability)}</td>`).join('')}</tr>`;
+
+  // Selector de sensibilidad: primer escenario con rangos
+  const sel = document.getElementById('sens-select');
+  sel.innerHTML = S.map((s, i) => `<option value="${i}">${esc(s.name)}</option>`).join('');
+  sel.value = String(Math.max(0, S.findIndex(s => Object.keys(s.sensitivity).length)));
+  sel.onchange = renderSens;
+  renderSens();
 }
-poll();
+
+function renderI() {
+  const S = lastResults.scenarios;
+  const log = scaleI === 'logarithmic';
+  const clamp = arr => log ? arr.map(v => Math.max(1, v)) : arr;  // en log, 0 se dibuja como ≤1
+  chart('chart-i', {
+    type: 'line',
+    data: { labels: S[0].series.I.mean.map((_, i) => i), datasets: S.flatMap((s, i) => [
+      { label: s.name + ' P95', data: clamp(s.series.I.p95), borderColor: 'transparent', backgroundColor: alpha(color(i), .12), pointRadius: 0, fill: '+1' },
+      { label: s.name + ' P5', data: clamp(s.series.I.p5), borderColor: 'transparent', pointRadius: 0, fill: false },
+      { label: s.name, data: clamp(s.series.I.mean), borderColor: color(i), borderWidth: 2.25, pointRadius: 0, tension: .25, fill: false },
+    ]) },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { filter: it => !/ P(5|95)$/.test(it.text) } },
+        tooltip: { filter: it => !/ P(5|95)$/.test(it.dataset.label), itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          callbacks: { title: it => 'Día ' + it[0].label, label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { ...monoTicks, maxTicksLimit: 13 }, title: { display: true, text: 'día' } },
+        y: log ? { type: 'logarithmic', min: 0.8, ticks: logTicks } : { ticks: { ...monoTicks, callback: v => fmt(v) } },
+      },
+    },
+  });
+}
+
+function renderSens() {
+  const s = lastResults.scenarios[+document.getElementById('sens-select').value];
+  const names = Object.fromEntries(PARAMS.map(p => [p[0], p[1]]));
+  const keys = Object.keys(s.sensitivity).sort((a, b) =>
+    Math.abs(s.sensitivity[b].peakInfected) - Math.abs(s.sensitivity[a].peakInfected));
+  document.getElementById('sens-empty').classList.toggle('hidden', keys.length > 0);
+  const signColor = (v, a = 1) => alpha(v >= 0 ? '#f87171' : '#34d399', a);
+  chart('chart-sens', {
+    type: 'bar',
+    data: { labels: keys.map(k => names[k] || k), datasets: [
+      { label: 'vs pico', data: keys.map(k => s.sensitivity[k].peakInfected),
+        backgroundColor: keys.map(k => signColor(s.sensitivity[k].peakInfected, .85)), borderRadius: 3, barPercentage: .8, categoryPercentage: .75 },
+      { label: 'vs afectados', data: keys.map(k => s.sensitivity[k].totalAttacked),
+        backgroundColor: keys.map(k => signColor(s.sensitivity[k].totalAttacked, .25)),
+        borderColor: keys.map(k => signColor(s.sensitivity[k].totalAttacked)), borderWidth: 1, borderRadius: 3, barPercentage: .8, categoryPercentage: .75 },
+    ] },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { labels: { generateLabels: () => [
+          { text: 'vs pico', fillStyle: '#cbd5e1', strokeStyle: '#cbd5e1', pointStyle: 'rect', fontColor: '#94a3b8' },
+          { text: 'vs afectados totales', fillStyle: alpha('#cbd5e1', .25), strokeStyle: '#cbd5e1', lineWidth: 1, pointStyle: 'rect', fontColor: '#94a3b8' },
+        ] } },
+        tooltip: { callbacks: { label: c => ` ρ ${c.dataset.label}: ${c.parsed.x.toFixed(2)}` } },
+      },
+      scales: { x: { min: -1, max: 1, ticks: { ...monoTicks, stepSize: .5 } }, y: { grid: { display: false } } },
+    },
+  });
+}
+
+document.querySelectorAll('#scale-i button').forEach(b => b.onclick = () => {
+  scaleI = b.dataset.v;
+  document.querySelectorAll('#scale-i button').forEach(x => x.classList.toggle('on', x === b));
+  if (lastResults) renderI();
+});
+
+(async function init() {
+  loadDemo();
+  try {
+    const r = await fetch('/api/presets').then(x => x.json());
+    presets = r.presets || {};
+  } catch (_) { /* sin servidor: solo demo */ }
+  renderAddButtons();
+  // Al abrir: muestra la corrida en curso o terminada; si no hay ninguna, corre la demo
+  try {
+    const res = await fetch('/api/montecarlo/results');
+    if (res.status === 200) return render(await res.json());
+    const st = await res.json().catch(() => ({}));
+    if (st.state === 'running') return poll();
+    run();
+  } catch (_) { /* sin servidor: el formulario sigue usable */ }
+})();
 </script>
+<script src="/js/help.js?v=20261028_help"></script>
 </body>
 </html>

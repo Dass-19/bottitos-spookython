@@ -2,7 +2,7 @@
   "project_name": "bottitos-spookython",
   "aos_version": "0.7.1",
   "lint_command": null,
-  "test_command": null,
+  "test_command": "python scripts/test_montecarlo.py",
   "migration_command": null,
   "client_generator": "generic",
   "deny_paths": [

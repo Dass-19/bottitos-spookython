@@ -4,73 +4,19 @@ const path = require('path');
 
 const OUT = path.join(__dirname, '..', 'frontend', 'assets', 'manta_routes.js');
 
-// Real terrestrial nodes of Manta Cantón
-const NODES = {
-  Murcielago: { lat: -0.9416, lng: -80.7298, name: 'Av. Malecón y Calle 24 (Murciélago)' },
-  Calle13: { lat: -0.9472, lng: -80.7268, name: 'Calle 13 y Av. 24 (Callejón Central)' },
-  FlavioReyes: { lat: -0.9508, lng: -80.7285, name: 'Av. Flavio Reyes y Calle 15' },
-  HospitalRZ: { lat: -0.9525, lng: -80.7262, name: 'Av. 24 y Calle 12 (Hospital RZ)' },
-  Barbasquillo: { lat: -0.9482, lng: -80.7412, name: 'Av. Barbasquillo y Calle M1' },
-  ULEAM: { lat: -0.9556, lng: -80.7482, name: 'Av. Circunvalación y Vía a San Mateo (ULEAM)' },
-  PuertoManta: { lat: -0.9455, lng: -80.7227, name: 'Av. Malecón y Plaza Cívica (Acceso Puerto)' },
-  Pescador: { lat: -0.9506, lng: -80.7205, name: 'Redondel de INEPACA / Av. Malecón' },
-  Tarqui: { lat: -0.9525, lng: -80.7072, name: 'Av. 105 y Calle 102 (Mercado Tarqui)' },
-  TarquiPlayita: { lat: -0.9519, lng: -80.7122, name: 'Malecón de Tarqui y Playita Mía' },
-  Jocay: { lat: -0.9572, lng: -80.7098, name: 'Av. 4 de Noviembre y Calle J-10 (Jocay)' },
-  VeinteDeMayo: { lat: -0.9682, lng: -80.7228, name: 'Av. Interbarrial y Calle 308 (20 de Mayo)' },
-  EloyAlfaro: { lat: -0.9781, lng: -80.7180, name: 'Vía Interbarrial y Av. 212 (Eloy Alfaro)' },
-  LosEsteros: { lat: -0.9520, lng: -80.6890, name: 'Av. 102 y Calle 119 (Los Esteros)' },
-  Palmar: { lat: -0.9615, lng: -80.6865, name: 'Av. de la Cultura y Terminal El Palmar' },
-  Aeropuerto: { lat: -0.9525, lng: -80.6765, name: 'Vía Puerto-Aeropuerto (Base MEC)' },
-  Jaramijo: { lat: -0.9510, lng: -80.6400, name: 'Vía Manta-Jaramijó y Caleta Este' },
-  SanMateo: { lat: -0.9850, lng: -80.8120, name: 'Ruta Spondylus E15 y Acceso San Mateo' },
-  Montecristi: { lat: -1.0450, lng: -80.6620, name: 'Intercambiador E30 y Vía Montecristi' },
-  Marianita: { lat: -1.0250, lng: -80.8450, name: 'Ruta Spondylus E15 y Santa Marianita' }
-};
+// Nodos y corredores: fuente única en frontend/js/manta-config.js
+global.window = {};
+require(path.join(__dirname, '..', 'frontend', 'js', 'manta-config.js'));
+const NODES = window.MANTA_CONFIG.nodes;
+const PAIRS = window.MANTA_CONFIG.routePairs;
+const FORCE = process.argv.includes('--all');  // por defecto solo pide a OSRM las rutas que faltan
 
-const PAIRS = {
-  // Eje Costero & Portuario (100% TERRESTRE)
-  Murcielago_PuertoManta: ['Murcielago', 'PuertoManta'],
-  PuertoManta_Pescador: ['PuertoManta', 'Pescador'],
-  Pescador_Tarqui: ['Pescador', 'Tarqui'],
-  Tarqui_TarquiPlayita: ['Tarqui', 'TarquiPlayita'],
-  TarquiPlayita_LosEsteros: ['TarquiPlayita', 'LosEsteros'],
-  Murcielago_Tarqui: ['Murcielago', 'Tarqui'],
-  Pescador_Jocay: ['Pescador', 'Jocay'],
-
-  // Centro Urbano & Callejones Comerciales
-  Murcielago_Calle13: ['Murcielago', 'Calle13'],
-  Calle13_FlavioReyes: ['Calle13', 'FlavioReyes'],
-  FlavioReyes_HospitalRZ: ['FlavioReyes', 'HospitalRZ'],
-  HospitalRZ_Jocay: ['HospitalRZ', 'Jocay'],
-  FlavioReyes_Barbasquillo: ['FlavioReyes', 'Barbasquillo'],
-  FlavioReyes_Jocay: ['FlavioReyes', 'Jocay'],
-  Murcielago_Jocay: ['Murcielago', 'Jocay'],
-  Tarqui_Jocay: ['Tarqui', 'Jocay'],
-
-  // Barbasquillo, ULEAM & Spondylus Oeste
-  Murcielago_Barbasquillo: ['Murcielago', 'Barbasquillo'],
-  Barbasquillo_ULEAM: ['Barbasquillo', 'ULEAM'],
-  ULEAM_SanMateo: ['ULEAM', 'SanMateo'],
-  Murcielago_SanMateo: ['Murcielago', 'SanMateo'],
-  SanMateo_Marianita: ['SanMateo', 'Marianita'],
-
-  // Eje Este (Los Esteros, Palmar, Aeropuerto, Jaramijó)
-  Tarqui_LosEsteros: ['Tarqui', 'LosEsteros'],
-  Tarqui_Palmar: ['Tarqui', 'Palmar'],
-  LosEsteros_Palmar: ['LosEsteros', 'Palmar'],
-  Palmar_Aeropuerto: ['Palmar', 'Aeropuerto'],
-  Aeropuerto_Jaramijo: ['Aeropuerto', 'Jaramijo'],
-  LosEsteros_Jaramijo: ['LosEsteros', 'Jaramijo'],
-
-  // Eje Sur & Vía Interbarrial
-  Jocay_VeinteDeMayo: ['Jocay', 'VeinteDeMayo'],
-  VeinteDeMayo_EloyAlfaro: ['VeinteDeMayo', 'EloyAlfaro'],
-  Jocay_EloyAlfaro: ['Jocay', 'EloyAlfaro'],
-  ULEAM_EloyAlfaro: ['ULEAM', 'EloyAlfaro'],
-  EloyAlfaro_Montecristi: ['EloyAlfaro', 'Montecristi'],
-  Jocay_Montecristi: ['Jocay', 'Montecristi']
-};
+function loadExisting() {
+  if (FORCE || !fs.existsSync(OUT)) return {};
+  global.window.MANTA_STREET_ROUTES = {};
+  new Function('window', fs.readFileSync(OUT, 'utf8'))(global.window);
+  return global.window.MANTA_STREET_ROUTES;
+}
 
 function fetchOSRM(start, end) {
   const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
@@ -117,15 +63,17 @@ function interpolate(p1, p2, count) {
 }
 
 async function run() {
+  const existing = loadExisting();
   const result = {};
   const keys = Object.keys(PAIRS);
-  console.log(`Starting generation for ${keys.length} routes...`);
+  console.log(`Starting generation for ${keys.length} routes (${Object.keys(existing).length} existentes)...`);
 
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
     const [fromK, toK] = PAIRS[key];
     const fromNode = NODES[fromK];
     const toNode = NODES[toK];
+    if (existing[key]) { result[key] = existing[key]; continue; }
 
     console.log(`[${i + 1}/${keys.length}] Fetching ${key}...`);
     let coords = await fetchOSRM(fromNode, toNode);

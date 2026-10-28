@@ -893,6 +893,28 @@ const MANTA_SPRITES = {
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
+      } else if (p.type === 'brain_bubble') {
+        // Globo de decisión del paciente cero: sigue al agente y solo se desvanece en el último 25 %
+        const f = p.follow;
+        if (!f || f.type !== 'infected') { p.life = 0; continue; }
+        const x = f.screenX, y = f.screenY - 74;  // por encima de la galera
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, p.life * 4);
+        ctx.font = 'bold 11px "Chakra Petch", sans-serif';
+        const w = ctx.measureText(p.text).width + 14;
+        ctx.fillStyle = 'rgba(11, 17, 23, 0.92)';
+        ctx.strokeStyle = p.color || '#c084fc';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(x - w / 2, y - 11, w, 20, 6);
+        ctx.moveTo(x - 5, y + 9); ctx.lineTo(x, y + 15); ctx.lineTo(x + 5, y + 9);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.text, x, y);
+        ctx.restore();
       } else if (p.type === 'text') {
         p.y -= 0.6;
         ctx.save();

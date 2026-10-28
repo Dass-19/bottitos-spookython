@@ -36,7 +36,23 @@ paths:
           description: Escenario aplicado
   /api/sim/launch:
     post:
-      summary: Inicia el brote desde cero con los parámetros configurados
+      summary: Inicia el brote desde cero con los parámetros configurados (no dispara Monte Carlo, ADR-003)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                epicenter: {type: string}
+                agentCount: {type: integer}
+                armedCount: {type: integer}
+                immunityRate: {type: number}
+                incubationSeconds: {type: number}
+                ammo: {type: integer}
+                cureCrates: {type: integer}
+                isCarnaval: {type: boolean}
+                isNight: {type: boolean}
+                cercoVial: {type: boolean}
       responses:
         '200':
           description: Simulación iniciada
@@ -58,6 +74,47 @@ paths:
       responses:
         '200':
           description: Resultado del lanzamiento de cura
+  /api/montecarlo/run:
+    post:
+      summary: Lanza Monte Carlo multi-escenario en segundo plano (ADR-003)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenarios]
+              properties:
+                runs: {type: integer, minimum: 50, maximum: 5000, default: 400, description: Corridas por escenario}
+                seed: {type: integer, default: 42}
+                scenarios:
+                  type: array
+                  minItems: 1
+                  maxItems: 8
+                  items:
+                    type: object
+                    required: [name, params]
+                    properties:
+                      name: {type: string, maxLength: 60}
+                      params:
+                        type: object
+                        description: "Cada parámetro numérico es un número fijo o {min, max}; los booleanos son fijos."
+                        properties:
+                          r0: {$ref: '#/components/schemas/NumOrRange'}
+                          immunityRate: {$ref: '#/components/schemas/NumOrRange'}
+                          incubationSeconds: {$ref: '#/components/schemas/NumOrRange'}
+                          agentCount: {$ref: '#/components/schemas/NumOrRange'}
+                          armedCount: {$ref: '#/components/schemas/NumOrRange'}
+                          ammo: {$ref: '#/components/schemas/NumOrRange'}
+                          cureCrates: {$ref: '#/components/schemas/NumOrRange'}
+                          isCarnaval: {type: boolean}
+                          isNight: {type: boolean}
+                          cercoVial: {type: boolean}
+      responses:
+        '200':
+          description: Corrida iniciada (mismo cuerpo que /api/montecarlo/status, con runId)
+        '422':
+          description: Parámetros inválidos (min > max, fuera de límites)
   /api/montecarlo/status:
     get:
       summary: Estado y porcentaje de progreso de la simulación Monte Carlo en segundo plano (NumPy)
@@ -66,15 +123,62 @@ paths:
           description: Progreso actual
   /api/montecarlo/results:
     get:
-      summary: Resultados estadísticos agregados de Monte Carlo (promedios, rangos P5-P95, series SEIR e histograma sobre población real de Manta 271,145)
+      summary: Resultados agregados por escenario (series SEIR P5-P95, resumen, histograma y sensibilidad) sobre población real de Manta 271,145
       responses:
         '200':
-          description: Resultados completos
+          description: "Resultados completos: {meta: {runId, runs, seed, days, totalPop}, scenarios: [{name, params, series, summary, histogram, sensitivity}]}"
         '202':
           description: En ejecución
+  /api/zombie/decide:
+    post:
+      summary: Decide la próxima ruta del zombie cero con LLM (Ollama Cloud) o heurística de respaldo (ADR-004)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [options]
+              properties:
+                current: {type: string, maxLength: 80}
+                options:
+                  type: array
+                  minItems: 1
+                  maxItems: 12
+                  items:
+                    type: object
+                    required: [route]
+                    properties:
+                      route: {type: string, maxLength: 80}
+                      humans: {type: integer, minimum: 0}
+                      armed: {type: integer, minimum: 0}
+                      immune: {type: integer, minimum: 0}
+      responses:
+        '200':
+          description: Decisión
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  choice: {type: integer, description: Índice en options}
+                  target: {type: string}
+                  reason: {type: string}
+                  source: {type: string, enum: [llm, heuristic]}
+                  latencyMs: {type: integer}
   /montecarlo:
     get:
       summary: Dashboard HTML de resultados de Monte Carlo
       responses:
         '200':
           description: Dashboard HTML
+components:
+  schemas:
+    NumOrRange:
+      oneOf:
+        - type: number
+        - type: object
+          required: [min, max]
+          properties:
+            min: {type: number}
+            max: {type: number}

@@ -7,6 +7,8 @@ Formato (Markdown, una fila por lección, más reciente arriba):
 
 | Fecha | Artefacto tocado | Evidencia (comando o salida) | Efecto |
 |---|---|---|---|
+| 2026-10-28 | `backend/montecarlo.py`, `scripts/test_montecarlo.py` | Mutaciones `S = S + healed` → `R = R + healed` e `immune += delta` en `deploy_airdrop` → `AssertionError`; restauradas → `ALL_MC_TESTS_PASSED` (11 tests) | Un test de conservación (S+E+I+R = pop) no distingue a dónde van los curados: hace falta afirmar el compartimento destino (R constante = inmunes iniciales). |
+| 2026-10-28 | `backend/montecarlo.py` `_spearman` | `x` binario: `argsort().argsort()` daba ρ = 0.751 vs scipy 0.863; con rangos promedio, 0.878 = scipy 0.8783 | Con parámetros enteros hay muchos empates: usar rangos promedio para Spearman. |
 | 2026-10-27 | `backend/engine.py`, `backend/montecarlo.py`, `frontend/js/engine.js` | `python scripts/test_scales.py` -> `ALL_SEPARATION_TESTS_PASSED` & `node --check frontend/js/engine.js` (exit 0) | Separar la escala visual del mapa (`totalPop = agentCount`) de la escala censal real en Monte Carlo (`censusPop = 271145`) evita porcentajes `0.00%` en el HUD manteniendo rigor estadístico en `/montecarlo`. |
 
 ## Cómo se usa

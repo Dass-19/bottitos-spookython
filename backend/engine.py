@@ -218,8 +218,8 @@ class SeirSimulationEngine:
         self.state["cureCrates"] -= 1
         if healed_count > 0:
             delta = healed_count
+            # El antídoto cura pero no inmuniza: los curados vuelven a sanos
             self.state["infected"] = max(0, self.state["infected"] - delta)
-            self.state["immune"] = min(self.state["totalPop"], self.state["immune"] + delta)
             self.state["recovered"] += delta
             self.state["score"] += healed_count * 500
             self.state["healthy"] = max(

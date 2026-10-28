@@ -46,7 +46,6 @@
   const state = {
     hasStarted: false,
     armedCount: 20,
-    mcSeed: 42,
     isTransforming: false,
     isRunning: true,
     speed: 1,
@@ -95,12 +94,26 @@
   const nodeToRoutes = {};
   Object.keys(config.nodes).forEach(k => { nodeToRoutes[k] = []; });
 
+  // Empalme de la red: OSRM ajusta los extremos de cada ruta a la calle más cercana, que puede quedar
+  // a cientos de metros del nodo (Los Esteros ~340 m). Cada nodo se mueve al centro de los extremos
+  // reales de sus rutas y cada ruta se cierra exactamente en él: sin huecos ni saltos al cambiar de calle.
+  const routeEnds = {};
+  Object.keys(config.routePairs).forEach(rKey => {
+    const pts = rawRoutes[rKey];
+    if (!pts || pts.length < 2) return;
+    const [nA, nB] = config.routePairs[rKey];
+    (routeEnds[nA] = routeEnds[nA] || []).push(pts[0]);
+    (routeEnds[nB] = routeEnds[nB] || []).push(pts[pts.length - 1]);
+  });
+  Object.entries(routeEnds).forEach(([k, ends]) => {
+    config.nodes[k].lat = ends.reduce((s, p) => s + p[0], 0) / ends.length;
+    config.nodes[k].lng = ends.reduce((s, p) => s + p[1], 0) / ends.length;
+  });
+  const nodePt = k => [config.nodes[k].lat, config.nodes[k].lng];
+
   Object.keys(config.routePairs).forEach(rKey => {
     const [nA, nB] = config.routePairs[rKey];
-    const pts = rawRoutes[rKey] || [
-      [config.nodes[nA].lat, config.nodes[nA].lng],
-      [config.nodes[nB].lat, config.nodes[nB].lng]
-    ];
+    const pts = [nodePt(nA), ...(rawRoutes[rKey] || []), nodePt(nB)];
 
     const cumDists = [0];
     let totalDist = 0;
@@ -115,6 +128,14 @@
     nodeToRoutes[nA].push({ route: rKey, at: 'nodeA' });
     nodeToRoutes[nB].push({ route: rKey, at: 'nodeB' });
   });
+
+  // Distancias de interacción en metros reales: el resultado de la simulación no depende del zoom
+  // ni de qué agentes estén en pantalla (antes se medían en píxeles y solo dentro del cuadro).
+  const SHOOT_RANGE_M = 75;   // alcance de disparo (≈ 65 px a zoom 17)
+  const BITE_RANGE_M = 15;    // alcance de mordida (≈ 14 px a zoom 17)
+  const SENSE_RADIUS_M = 300; // olfato/oído del zombi: detecta humanos a esta distancia y va por ellos
+  const M_PER_DEG_LAT = 110574;
+  const M_PER_DEG_LNG = 111320 * Math.cos(config.center[0] * Math.PI / 180);
 
   // Exact position lookup along real curved road
   function getPosAtDist(rKey, dist) {
@@ -478,7 +499,7 @@
         hp: 8,
         maxHp: 8,
         armed: armedSet.has(i),
-        isPatientZero: (i === 0)
+        isPatientZero: false
       });
     }
 
@@ -498,27 +519,43 @@
   }
   initAgents();
 
+  // Paciente cero: el agente no inmune más cercano al epicentro.
+  // Se usa getPosAtDist porque tras initAgents() lat/lng siguen en 0 hasta el primer frame.
+  function pickPatientZero(epNode) {
+    let best = null;
+    let bestD = Infinity;
+    state.agents.forEach(a => {
+      a.isPatientZero = false;
+      if (a.type === 'immune') return;
+      const p = getPosAtDist(a.routeKey, a.posMeters);
+      const d = Math.hypot(p.lat - epNode.lat, p.lng - epNode.lng);
+      if (d < bestD) { bestD = d; best = a; }
+    });
+    if (!best) best = state.agents[0] || null;
+    if (best) best.isPatientZero = true;
+    return best;
+  }
+
+  function mutatePatientZero(agent) {
+    agent.type = 'infected';
+    agent.hp = 8;
+    agent.maxHp = 8;
+    agent.glitchTimer = 45;
+    agent.invulnTimer = 180; // ~3 s sin recibir disparos al terminar la cinemática
+  }
+
   // 4. PATIENT ZERO GRADUAL TRANSFORMATION CINEMATIC
   window.startOutbreakSequence = function(epKey) {
     state.activeEpicenter = epKey || state.activeEpicenter;
     const epNode = config.nodes[state.activeEpicenter] || config.nodes.Tarqui;
 
-    // Pick agent closest to epicenter node
-    let targetAgent = null;
-    let minD = 999999;
-    state.agents.forEach(a => {
-      if (a.routeKey.includes(state.activeEpicenter)) {
-        targetAgent = a;
-      }
-    });
-    if (!targetAgent && state.agents.length > 0) targetAgent = state.agents[0];
-
+    let targetAgent = pickPatientZero(epNode);
     if (!targetAgent) return;
-    targetAgent.isPatientZero = true;
     targetAgent.type = 'human';
 
-    // Camera fly to patient zero
-    map.flyTo([epNode.lat, epNode.lng], 17, { duration: 1.5 });
+    // Cámara sobre el paciente cero (no sobre el nodo): queda en cuadro durante la cinemática
+    const tPos = getPosAtDist(targetAgent.routeKey, targetAgent.posMeters);
+    map.flyTo([tPos.lat, tPos.lng], 17, { duration: 1.5 });
 
     state.isTransforming = true;
     const overlay = document.getElementById('cinematic-overlay');
@@ -569,10 +606,7 @@
       if (desc) desc.innerText = "¡MUTACIÓN COMPLETA! EL PACIENTE CERO DESPIERTA COMO ZOMBI.";
       if (prog) prog.style.width = "100%";
 
-      targetAgent.type = 'infected';
-      targetAgent.hp = 8;
-      targetAgent.maxHp = 8;
-      targetAgent.glitchTimer = 45;
+      mutatePatientZero(targetAgent);
       sfx.transformRoar();
 
       // Mutation burst VFX
@@ -615,6 +649,14 @@
     setTimeout(() => {
       if (overlay) overlay.classList.remove('active');
       state.isTransforming = false;
+
+      // Garantiza un zombie dentro del cuadro al cerrar la cinemática
+      let pz = state.agents.find(a => a.type === 'infected');
+      if (!pz && state.hasStarted) {
+        pz = pickPatientZero(epNode);
+        if (pz) { mutatePatientZero(pz); updateHUD(); }
+      }
+      if (pz && !map.getBounds().contains([pz.lat, pz.lng])) map.panTo([pz.lat, pz.lng]);
     }, 5000);
   };
 
@@ -628,8 +670,6 @@
 
     const armedSlider = document.getElementById('init-armed-slider');
     if (armedSlider) state.armedCount = Math.min(parseInt(armedSlider.value, 10), state.agentCount);
-    const seedInput = document.getElementById('init-mc-seed');
-    if (seedInput) state.mcSeed = parseInt(seedInput.value, 10) || 42;
 
     const immuneSlider = document.getElementById('init-immune-slider');
     if (immuneSlider) state.immunityRate = parseInt(immuneSlider.value, 10) / 100;
@@ -671,7 +711,6 @@
       epicenter: epVal,
       agentCount: state.agentCount,
       armedCount: state.armedCount,
-      mcSeed: state.mcSeed,
       immunityRate: state.immunityRate,
       incubationSeconds: state.incubationSeconds,
       ammo: state.ammo,
@@ -682,8 +721,6 @@
     }).then(res => {
       if (res && res.state) applyBackendState(res.state);
     });
-
-    window.startMonteCarloPolling();
 
     // Start cinematic sequence
     window.startOutbreakSequence(epVal);
@@ -757,6 +794,99 @@
     }
   };
 
+  // Cerebro del paciente cero (ADR-004): al pasar la mitad del tramo pide al backend
+  // (LLM en Ollama Cloud o heurística) la ruta a tomar en la próxima intersección.
+  // Nunca bloquea el loop: si la respuesta no llega a tiempo, se elige al azar.
+  function outgoingConns(node, routeKey) {
+    let conns = (nodeToRoutes[node] || []).filter(c => c.route !== routeKey);
+    if (state.cercoVial) {
+      conns = conns.filter(c => !c.route.includes('Montecristi') && !c.route.includes('SanMateo'));
+    }
+    return conns;
+  }
+
+  function requestBrainDecision(a, rd) {
+    const frac = a.dir === 1 ? a.posMeters / rd.totalDist : 1 - a.posMeters / rd.totalDist;
+    const leg = `${a.routeKey}:${a.dir}`;
+    if (frac < 0.5 || a.brainLeg === leg) return;
+    a.brainLeg = leg;
+    a.brainChoice = null;
+    const conns = outgoingConns(a.dir === 1 ? rd.nodeB : rd.nodeA, a.routeKey);
+    if (conns.length < 2) return;
+    const options = conns.map(c => {
+      const o = { route: c.route, humans: 0, armed: 0, immune: 0 };
+      state.agents.forEach(x => {
+        if (x.routeKey !== c.route) return;
+        if (x.type === 'immune') o.immune++;
+        else if (x.type === 'human') x.armed ? o.armed++ : o.humans++;
+      });
+      return o;
+    });
+    syncBackend('/api/zombie/decide', { current: a.routeKey, options }).then(res => {
+      if (!res || a.brainLeg !== leg || a.type !== 'infected' || !conns[res.choice]) return;
+      a.brainChoice = conns[res.choice];
+      // Globo que sigue al zombie ~4 s (opaco y luego se desvanece)
+      state.particles.push({
+        type: 'brain_bubble',
+        text: `🧠 ${res.reason}`,
+        follow: a,
+        color: res.source === 'llm' ? '#c084fc' : '#94a3b8',
+        life: 1.0,
+        decay: 1 / 240
+      });
+    });
+  }
+
+  // Olfato/oído: cada ~1/3 s el zombi busca al humano más cercano dentro de SENSE_RADIUS_M y va por él.
+  // Si la presa está en su calle, camina hacia ella; si está en una calle que sale del cruce que dejó
+  // atrás, da la vuelta. En los cruces, pickNextConn toma la calle que lo acerca a la presa.
+  function huntPrey(a, rd) {
+    if (!(a.huntTick-- > 0) || !a.prey || a.prey.type !== 'human') {
+      a.huntTick = 20;
+      a.prey = null;
+      let best = SENSE_RADIUS_M;
+      for (const h of state.agents) {
+        if (h.type !== 'human') continue;
+        const d = Math.hypot(h.mx - a.mx, h.my - a.my);
+        if (d < best) { best = d; a.prey = h; }
+      }
+    }
+    const p = a.prey;
+    if (!p) return;
+    if (p.routeKey === a.routeKey) {
+      a.dir = p.posMeters >= a.posMeters ? 1 : -1;
+      return;
+    }
+    const pr = routeData[p.routeKey];
+    const touches = n => pr.nodeA === n || pr.nodeB === n;
+    const behind = a.dir === 1 ? rd.nodeA : rd.nodeB;
+    const ahead = a.dir === 1 ? rd.nodeB : rd.nodeA;
+    if (touches(behind) && !touches(ahead)) a.dir = -a.dir;
+  }
+
+  function huntConn(a, conns) {
+    const p = a.type === 'infected' && a.prey && a.prey.type === 'human' ? a.prey : null;
+    if (!p) return null;
+    const direct = conns.find(c => c.route === p.routeKey);
+    if (direct) return direct;
+    let best = null, bestD = Infinity;
+    conns.forEach(c => {
+      const rd = routeData[c.route];
+      const far = config.nodes[c.at === 'nodeA' ? rd.nodeB : rd.nodeA];
+      const d = Math.hypot(far.lng * M_PER_DEG_LNG - p.mx, far.lat * M_PER_DEG_LAT - p.my);
+      if (d < bestD) { bestD = d; best = c; }
+    });
+    return best;
+  }
+
+  function pickNextConn(a, conns) {
+    const hunt = huntConn(a, conns);
+    if (hunt) { a.brainChoice = null; return hunt; }  // la presa olfateada manda sobre el cerebro LLM
+    const brain = a.brainChoice && conns.find(c => c.route === a.brainChoice.route);
+    a.brainChoice = null;
+    return brain || conns[Math.floor(Math.random() * conns.length)];
+  }
+
   // 5. ANIMATION & COMBAT LOOP (60 FPS)
   function updateAndRender() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -772,22 +902,20 @@
       if (!rd) continue;
 
       if (state.isRunning && !state.isTransforming) {
-        // Slow down if bitten
-        const bittenSpeedFactor = (a.type === 'bitten') ? 0.55 : 1.0;
-        a.posMeters += a.dir * a.speedMps * (1 / 60) * effectiveSpeed * 3.8 * bittenSpeedFactor;
+        if (a.type === 'infected') huntPrey(a, rd);
+        if (a.isPatientZero && a.type === 'infected') requestBrainDecision(a, rd);
+
+        // Zombies algo más rápidos; mordidos más lentos
+        const typeSpeedFactor = a.type === 'infected' ? 1.25 : (a.type === 'bitten' ? 0.55 : 1.0);
+        a.posMeters += a.dir * a.speedMps * (1 / 60) * effectiveSpeed * 3.8 * typeSpeedFactor;
 
         // Intersection transitions (with roadblock check)
         if (a.dir === 1 && a.posMeters >= rd.totalDist) {
-          const targetNode = rd.nodeB;
-          let conns = (nodeToRoutes[targetNode] || []).filter(c => c.route !== a.routeKey);
-          
-          // Cerco vial blocks routes towards Montecristi or San Mateo
-          if (state.cercoVial) {
-            conns = conns.filter(c => !c.route.includes('Montecristi') && !c.route.includes('SanMateo'));
-          }
+          // Cerco vial bloquea rutas hacia Montecristi o San Mateo
+          const conns = outgoingConns(rd.nodeB, a.routeKey);
 
           if (conns.length > 0) {
-            const nextConn = conns[Math.floor(Math.random() * conns.length)];
+            const nextConn = pickNextConn(a, conns);
             a.routeKey = nextConn.route;
             const nextRd = routeData[a.routeKey];
             if (nextConn.at === 'nodeA') {
@@ -803,15 +931,11 @@
             a.posMeters = rd.totalDist;
           }
         } else if (a.dir === -1 && a.posMeters <= 0) {
-          const targetNode = rd.nodeA;
-          let conns = (nodeToRoutes[targetNode] || []).filter(c => c.route !== a.routeKey);
-
-          if (state.cercoVial) {
-            conns = conns.filter(c => !c.route.includes('Montecristi') && !c.route.includes('SanMateo'));
-          }
+          // Cerco vial bloquea rutas hacia Montecristi o San Mateo
+          const conns = outgoingConns(rd.nodeA, a.routeKey);
 
           if (conns.length > 0) {
-            const nextConn = conns[Math.floor(Math.random() * conns.length)];
+            const nextConn = pickNextConn(a, conns);
             a.routeKey = nextConn.route;
             const nextRd = routeData[a.routeKey];
             if (nextConn.at === 'nodeA') {
@@ -842,6 +966,9 @@
       a.animFrame = Math.floor(a.animBob) % 2;
 
       // Screen projection
+      a.mx = a.lng * M_PER_DEG_LNG;
+      a.my = a.lat * M_PER_DEG_LAT;
+
       const pt = map.latLngToContainerPoint([a.lat, a.lng]);
       a.screenX = pt.x;
       a.screenY = pt.y;
@@ -855,7 +982,7 @@
           a.hp = 8;
           a.maxHp = 8;
           a.glitchTimer = 25;
-          sfx.zombieBite();
+          if (a.screenX > -20 && a.screenX < canvas.width + 20 && a.screenY > -20 && a.screenY < canvas.height + 20) sfx.zombieBite();
 
           state.particles.push({
             type: 'text',
@@ -890,13 +1017,16 @@
       if (a.vomitCooldown < 20) a.isVomiting = false;
       if (a.glitchTimer > 0) a.glitchTimer--;
       if (a.cureTimer > 0) a.cureTimer--;
+      // La gracia del paciente cero empieza a contar al terminar la cinemática
+      if (a.invulnTimer > 0 && state.isRunning && !state.isTransforming) a.invulnTimer--;
     }
 
     // B. Combat Detection & Reactions
     if (state.isRunning && state.hasStarted && !state.isTransforming) {
       for (let i = 0; i < state.agents.length; i++) {
         const a = state.agents[i];
-        if (a.screenX < -20 || a.screenX > canvas.width + 20 || a.screenY < -20 || a.screenY > canvas.height + 20) continue;
+        // Se simula todo el mapa; solo los sonidos dependen de lo que está en pantalla
+        const vis = a.screenX > -20 && a.screenX < canvas.width + 20 && a.screenY > -20 && a.screenY < canvas.height + 20;
 
         // 1. Soldier/Civilian shooting if zombie nearby
         if (a.type === 'human' || a.type === 'immune') {
@@ -905,8 +1035,9 @@
 
           for (let j = 0; j < state.agents.length; j++) {
             const other = state.agents[j];
-            if (other.type === 'infected') {
-              const d = Math.hypot(a.screenX - other.screenX, a.screenY - other.screenY);
+            // invulnTimer: gracia del paciente cero recién mutado
+            if (other.type === 'infected' && !(other.invulnTimer > 0)) {
+              const d = Math.hypot(a.mx - other.mx, a.my - other.my);
               if (d < nearestDist) {
                 nearestDist = d;
                 nearestZombie = other;
@@ -914,7 +1045,7 @@
             }
           }
 
-          if (nearestZombie && nearestDist < 65) {
+          if (nearestZombie && nearestDist < SHOOT_RANGE_M) {
             a.alertTimer = 16;
             a.facing = (nearestZombie.screenX >= a.screenX) ? 1 : -1;
 
@@ -953,7 +1084,7 @@
                   decay: 0.2
                 });
 
-                sfx.gunshot();
+                if (vis) sfx.gunshot();
 
                 // Apply bullet damage: Zombie dies in 8 gunshots
                 if (typeof nearestZombie.hp !== 'number') {
@@ -1022,22 +1153,24 @@
         else if (a.type === 'infected') {
           for (let j = 0; j < state.agents.length; j++) {
             const target = state.agents[j];
+            // Un solo intento por inmune: después lo ignora y sigue de largo
+            if (target.type === 'immune' && a.triedImmune && a.triedImmune.has(target.id)) continue;
             if (target.type === 'human' || target.type === 'immune') {
-              const d = Math.hypot(a.screenX - target.screenX, a.screenY - target.screenY);
+              const d = Math.hypot(a.mx - target.mx, a.my - target.my);
 
-              if (d < 65) {
+              if (d < SHOOT_RANGE_M) {
                 a.alertTimer = 16;
                 a.facing = (target.screenX >= a.screenX) ? 1 : -1;
               }
 
-              if (d < 14) {
+              if (d < BITE_RANGE_M) {
                 if (a.vomitCooldown <= 0) {
                   a.vomitCooldown = 32;
                   a.isVomiting = true;
 
                   if (target.type === 'immune') {
                     // DEFLECTED BY FIRST-AID IMMUNITY!
-                    sfx.deflect();
+                    if (vis) sfx.deflect();
                     state.particles.push({
                       type: 'text',
                       text: '¡FIRST-AID IMMUNE!',
@@ -1054,11 +1187,10 @@
                       life: 1.0,
                       decay: 0.05
                     });
-                    // Push zombie back
-                    a.posMeters -= a.dir * 3.5;
+                    (a.triedImmune || (a.triedImmune = new Set())).add(target.id);
                   } else {
                     // BITTEN / ENTERS INCUBATION! (Metal Slug Blood Vomit Attack)
-                    sfx.bloodVomit();
+                    if (vis) sfx.bloodVomit();
 
                     for (let k = 0; k < 8; k++) {
                       state.particles.push({
@@ -1123,6 +1255,7 @@
       if (a.type === 'infected') cssClass += ' agent-infected';
       else if (a.type === 'bitten') cssClass += ' agent-bitten';
       else if (a.type === 'immune') cssClass += ' agent-immune';
+      if (a.isPatientZero) cssClass += ' patient-zero';  // galera distintiva (arcade.css)
 
       if (!dom && domLayer) {
         dom = document.createElement('div');
@@ -1131,7 +1264,7 @@
         domLayer.appendChild(dom);
         agentDoms[a.id] = dom;
         dom._lastSrc = gifSrc;
-        dom._lastType = a.type;
+        dom._lastClass = cssClass;
       } else if (dom) {
         dom.style.display = 'block';
         if (dom._lastSrc !== gifSrc) {
@@ -1139,9 +1272,9 @@
           if (img) img.src = gifSrc;
           dom._lastSrc = gifSrc;
         }
-        if (dom._lastType !== a.type) {
+        if (dom._lastClass !== cssClass) {
           dom.className = cssClass;
-          dom._lastType = a.type;
+          dom._lastClass = cssClass;
         }
       }
 
@@ -1389,6 +1522,13 @@
   }
 
   // Live Parish Contagion calculation based on real agent coordinates
+  // Barrios sin el nombre de su parroquia en la clave de ruta (Manta urbana = barra Murciélago)
+  const BARRIO_PARISH = {
+    SantaMartha: 'Murcielago', AbdonCalderon: 'Murcielago', Manta2000: 'Murcielago', CiudadDelSol: 'Murcielago',
+    Miraflores: 'Tarqui', LosGeranios: 'Tarqui', Urbirrios: 'Tarqui', Altamira: 'Tarqui',
+    NuevaEsperanza: 'EloyAlfaro', LaAurora: 'EloyAlfaro'
+  };
+
   function updateParishBars() {
     const parishCounts = {
       Tarqui: { total: 0, bad: 0 },
@@ -1403,6 +1543,7 @@
       else if (a.routeKey.includes('Murcielago')) parish = 'Murcielago';
       else if (a.routeKey.includes('EloyAlfaro')) parish = 'EloyAlfaro';
       else if (a.routeKey.includes('Montecristi')) parish = 'Montecristi';
+      else parish = a.routeKey.split('_').map(n => BARRIO_PARISH[n]).find(Boolean) || null;
 
       if (parish && parishCounts[parish]) {
         parishCounts[parish].total++;
@@ -1865,15 +2006,18 @@
           crate.setAttribute('transform', `translate(${endPoint.x}, ${endPoint.y})`);
           setTimeout(() => crate.setAttribute('opacity', '0'), 700);
 
-          let healed = 0;
+          // El antídoto cura (vuelven a sanos, sin inmunidad) y arma al 15% de los curados (mín. 1)
+          const cured = [];
           state.agents.forEach(a => {
             const distKm = Math.hypot(a.lat - target.lat, a.lng - target.lng) * 111;
             if ((a.type === 'infected' || a.type === 'bitten') && distKm < 1.4) {
-              a.type = 'immune';
+              a.type = 'human';
               a.glitchTimer = 20;
               a.cureTimer = 40;
               a.incubationTimer = 0;
-              healed++;
+              a.invulnTimer = 0;
+              delete a.triedImmune;
+              cured.push(a);
 
               for (let s = 0; s < 4; s++) {
                 state.particles.push({
@@ -1889,6 +2033,22 @@
                 });
               }
             }
+          });
+
+          const healed = cured.length;
+          const toArm = cured.filter(a => !a.armed).sort(() => Math.random() - 0.5)
+            .slice(0, Math.ceil(healed * 0.15));
+          toArm.forEach(a => {
+            a.armed = true;
+            state.particles.push({
+              type: 'text',
+              text: '🔫 ¡ARMADO!',
+              x: a.screenX,
+              y: a.screenY - 22,
+              color: '#4ade80',
+              life: 1.2,
+              decay: 0.03
+            });
           });
 
           if (healed > 0) sfx.powSalute();
@@ -1929,7 +2089,6 @@
     const modal = document.getElementById('metal-slug-showcase');
     if (!modal) return;
     modal.classList.remove('hidden');
-    renderShowcaseTabs();
     selectShowcaseHero(activeShowcaseHero);
   };
 
@@ -1968,7 +2127,6 @@
       if (dom) dom._lastSrc = null;
     });
 
-    renderShowcaseTabs();
     sfx.button();
   };
 
@@ -1989,23 +2147,6 @@
       setTimeout(() => { imgI.style.transform = 'scale(1.0)'; }, 350);
     }
   };
-
-  function renderShowcaseTabs() {
-    const container = document.getElementById('showcase-character-tabs');
-    if (!container) return;
-    container.innerHTML = `
-      <div class="w-full flex flex-wrap items-center justify-between gap-2 px-2 py-1">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-amber-300 text-[11px] font-heavy tracking-wider">★ ROSTER EXCLUSIVO SPOOKYTHON 2026 (TRACK B)</span>
-        </div>
-        <div class="flex items-center gap-2 text-[9px] font-mono text-slate-400">
-          <span class="px-2 py-0.5 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 rounded font-bold">4 ESTADOS SEIR</span>
-          <span class="px-2 py-0.5 bg-slate-900 border border-slate-700 text-slate-300 rounded">32x40 @ 8X PIXEL ART</span>
-        </div>
-      </div>
-    `;
-  }
 
   // Quick Map Spawn Testing Functions
   window.spawnTestZombie = function() {
@@ -2051,36 +2192,6 @@
         updateHUD();
       }
     }, 600);
-  };
-
-  // Monte Carlo en segundo plano: sondeo de progreso y acceso al dashboard
-  let mcTimer = null;
-  window.startMonteCarloPolling = function() {
-    const btn = document.getElementById('btn-mc');
-    const txt = document.getElementById('btn-mc-text');
-    if (btn) { btn.dataset.ready = '0'; btn.classList.remove('hidden'); }
-    if (mcTimer) clearInterval(mcTimer);
-    mcTimer = setInterval(async () => {
-      const st = await syncBackend('/api/montecarlo/status');
-      if (!st) return;
-      if (st.state === 'running') {
-        if (txt) txt.innerText = `MONTE CARLO ${Math.round(st.progress * 100)}%`;
-      } else if (st.state === 'done') {
-        clearInterval(mcTimer);
-        if (btn) btn.dataset.ready = '1';
-        if (txt) txt.innerText = 'VER DASHBOARD MC';
-        if (btn) btn.classList.add('animate-pulse');
-        sfx.cure();
-      } else if (st.state === 'error') {
-        clearInterval(mcTimer);
-        if (txt) txt.innerText = 'MC ERROR';
-      }
-    }, 1500);
-  };
-
-  window.openMonteCarlo = function() {
-    const btn = document.getElementById('btn-mc');
-    if (btn && btn.dataset.ready === '1') window.open('/montecarlo', '_blank');
   };
 
   window.resetSimulation = function() {

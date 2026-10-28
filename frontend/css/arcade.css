@@ -353,3 +353,27 @@
 .agent-infected {
   filter: drop-shadow(0 0 5px rgba(220, 38, 38, 0.8));
 }
+
+/* Ayudas contextuales (js/help.js) */
+.help-dot { display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; border-radius: 50%;
+  border: 1px solid #334155; color: #94a3b8; font: 700 8px 'JetBrains Mono', monospace; cursor: help; flex-shrink: 0;
+  background: transparent; padding: 0; line-height: 1; }
+.help-dot:hover, .help-dot:focus { border-color: #facc15; color: #facc15; outline: none; }
+#help-pop { position: fixed; z-index: 9999; max-width: 280px; padding: 8px 10px; border-radius: 8px; background: #0b1117;
+  border: 1px solid #334155; box-shadow: 0 8px 24px rgba(0,0,0,.6); font: 500 11.5px/1.45 'Chakra Petch', sans-serif;
+  color: #cbd5e1; pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s;
+  text-transform: none; letter-spacing: normal; text-align: left; }
+#help-pop.show { opacity: 1; transform: none; }
+#help-pop b { color: #fff; }
+
+/* Paciente cero: galera negra con cinta roja sobre el sprite */
+.patient-zero::before, .patient-zero::after {
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; z-index: 1;
+}
+.patient-zero::before {  /* copa */
+  top: -6px; width: 13px; height: 10px; background: #111827;
+  border: 1px solid #000; border-bottom: 3px solid #dc2626; box-shadow: inset 2px 0 0 #374151;
+}
+.patient-zero::after {   /* ala */
+  top: 3px; width: 23px; height: 3px; background: #111827; border: 1px solid #000; border-radius: 1px;
+}

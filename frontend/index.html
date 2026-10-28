@@ -24,13 +24,13 @@
   <script src="js/tailwind-config.js"></script>
 
   <!-- Arcade & Tactical Stylesheet -->
-  <link rel="stylesheet" href="css/arcade.css?v=20261027_fixed_engine" />
+  <link rel="stylesheet" href="css/arcade.css?v=20261028_caza2" />
 
   <!-- Modular Scripts -->
-  <script src="assets/manta_routes.js?v=20261027_fixed_engine"></script>
-  <script src="js/audio.js?v=20261027_fixed_engine"></script>
-  <script src="js/manta-config.js?v=20261027_fixed_engine"></script>
-  <script src="js/sprites.js?v=20261027_fixed_engine"></script>
+  <script src="assets/manta_routes.js?v=20261028_caza2"></script>
+  <script src="js/audio.js?v=20261028_caza2"></script>
+  <script src="js/manta-config.js?v=20261028_caza2"></script>
+  <script src="js/sprites.js?v=20261028_caza2"></script>
 </head>
 
 <body
@@ -95,7 +95,7 @@
 
         <!-- 1. SANOS (Verde Esmeralda) -->
         <div class="hud-chip bg-emerald-950/60 border border-emerald-500/50 text-emerald-300"
-          title="Agentes sanos en el mapa">
+          data-help="<b>Sanos (S).</b> Personas que pueden infectarse. Los curados por antídoto vuelven aquí.">
           <div class="flex flex-col leading-none">
             <span class="text-[8px] font-heavy tracking-wider text-emerald-400/90 uppercase">SANOS</span>
             <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-white">
@@ -107,7 +107,7 @@
 
         <!-- 2. MORDIDOS / INCUBANDO (Ámbar) -->
         <div class="hud-chip bg-amber-950/60 border border-amber-500/50 text-amber-300"
-          title="Agentes mordidos incubando la mutación zombie">
+          data-help="<b>Mordidos (E).</b> Incubando el virus: caminan más lento y no contagian. Al terminar la incubación se convierten en zombis. El antídoto también los cura.">
           <div class="flex flex-col leading-none">
             <span class="text-[8px] font-heavy tracking-wider text-amber-400/90 uppercase">MORDIDOS</span>
             <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-amber-200">
@@ -119,7 +119,7 @@
 
         <!-- 3. ZOMBIS (Rojo Biohazard) -->
         <div class="hud-chip bg-red-950/70 border border-red-500/70 text-red-300"
-          title="Agentes infectados activos en el mapa">
+          data-help="<b>Zombis (I).</b> Muerden a quien tengan al lado. Caen al 8.º balazo y se mueven 1,25× más rápido que los humanos.">
           <div class="flex flex-col leading-none">
             <span class="text-[8px] font-heavy tracking-wider text-red-400 uppercase">ZOMBIS</span>
             <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-red-100">
@@ -129,11 +129,11 @@
           </div>
         </div>
 
-        <!-- 4. CURADOS / RECUPERADOS (Oro) -->
+        <!-- 4. INMUNES (Oro): el antídoto cura pero no inmuniza (los curados vuelven a SANOS) -->
         <div class="hud-chip bg-yellow-950/60 border border-yellow-500/50 text-yellow-300"
-          title="Agentes inmunizados o curados con el antídoto en el mapa">
+          data-help="<b>Inmunes (R).</b> Nunca se infectan: un zombi intenta morderlos una sola vez y sigue de largo. El antídoto cura pero <b>no</b> da inmunidad.">
           <div class="flex flex-col leading-none">
-            <span class="text-[8px] font-heavy tracking-wider text-yellow-400/90 uppercase">CURADOS</span>
+            <span class="text-[8px] font-heavy tracking-wider text-yellow-400/90 uppercase">INMUNES</span>
             <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-yellow-100">
               <span id="metric-immune">8</span>
               <span class="text-[9px] text-yellow-300/80 font-semibold" id="metric-immune-pct">8.4%</span>
@@ -145,7 +145,7 @@
         <button
           class="hud-chip bg-cyan-950/60 border border-cyan-500/50 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-900/60 cursor-pointer shadow-md"
           id="btn-main-airdrop" onclick="deployCureAirdrop();"
-          title="¡Clic para lanzar caja de antídoto con paracaídas sobre Manta!">
+          data-help="<b>Clic para lanzar una caja</b> sobre el epicentro: cura a mordidos y zombis en ~1,4 km (vuelven a sanos, sin inmunidad) y arma al 15 % de los curados (mínimo 1). El laboratorio sintetiza más cajas con el tiempo.">
           <span class="material-symbols-outlined text-cyan-400 text-sm sm:text-base shrink-0">paragliding</span>
           <div class="flex flex-col leading-none text-left">
             <span class="text-[8px] font-heavy tracking-wider text-cyan-400/90 uppercase">ANTÍDOTOS</span>
@@ -168,13 +168,13 @@
           <span class="material-symbols-outlined text-sm">volume_up</span>
         </button>
 
-        <!-- MONTE CARLO (background) -> dashboard -->
-        <button id="btn-mc" data-ready="0" onclick="openMonteCarlo(); SFX.button();"
-          class="hidden btn-arcade-green px-2.5 py-1 rounded text-[9px] font-heavy flex items-center gap-1 cursor-pointer shadow-md"
-          title="Simulación Monte Carlo (NumPy) corriendo en segundo plano; al terminar abre el dashboard">
+        <!-- MONTE CARLO multi-escenario (independiente del mapa, ADR-003) -->
+        <a id="btn-mc" href="/montecarlo" target="_blank" rel="noopener" onclick="SFX.button();"
+          class="btn-arcade-green px-2.5 py-1 rounded text-[9px] font-heavy flex items-center gap-1 cursor-pointer shadow-md"
+          title="Abrir el laboratorio Monte Carlo multi-escenario">
           <span class="material-symbols-outlined text-xs">monitoring</span>
-          <span id="btn-mc-text">MONTE CARLO 0%</span>
-        </button>
+          <span>MONTE CARLO</span>
+        </a>
 
         <!-- SINGLE HEADER BUTTON FOR CONTROLS & PARAMETERS -->
         <button id="btn-toggle-dock" onclick="toggleControlDock(); SFX.button();"
@@ -522,7 +522,7 @@
 
           <!-- 1. Lugar de Inicio (Paciente Cero) -->
           <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
-            <label class="text-amber-300 font-heavy text-[9px] block">1. LUGAR DE INICIO (PACIENTE CERO):</label>
+            <label class="text-amber-300 font-heavy text-[9px] flex items-center gap-1">1. LUGAR DE INICIO (PACIENTE CERO): <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: lugar de inicio" data-help="<b>Dónde aparece el paciente cero.</b> Se elige a la persona más cercana a ese punto y la cámara la sigue durante la animación. Zonas con más gente cerca = contagio más rápido.">?</span></label>
             <select
               class="w-full bg-[#131b22] border border-slate-700 text-emerald-400 font-mono text-[10px] p-1.5 rounded cursor-pointer"
               id="init-epicenter-select" onchange="changeEpicenter(this.value); SFX.button();">
@@ -542,7 +542,7 @@
           <!-- 2. Población en Calle -->
           <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
             <div class="flex justify-between text-[9px]">
-              <span class="text-slate-300 font-heavy">2. POBLACIÓN EN CALLE:</span>
+              <span class="text-slate-300 font-heavy flex items-center gap-1">2. POBLACIÓN EN CALLE: <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: población" data-help="<b>Personas caminando en el mapa.</b> Más gente = más encuentros: el virus salta más rápido, pero también hay más armados cerca. Los contadores del HUD son sobre estas personas.">?</span></span>
               <span class="font-mono text-emerald-400 font-bold" id="init-agents-val">95 TROPAS</span>
             </div>
             <input type="range" min="40" max="150" step="5" value="95" id="init-agents-slider"
@@ -553,7 +553,7 @@
           <!-- 2b. Personas con armas (reparto aleatorio) -->
           <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
             <div class="flex justify-between text-[9px]">
-              <span class="text-slate-300 font-heavy">2b. PERSONAS CON ARMAS (REPARTO ALEATORIO):</span>
+              <span class="text-slate-300 font-heavy flex items-center gap-1">2b. PERSONAS CON ARMAS: <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: armados" data-help="<b>Se reparten al azar.</b> Disparan al zombi más cercano dentro de su alcance; 8 balazos lo tumban. Sin munición, huyen. Cada antídoto arma además al 15 % de los curados.">?</span></span>
               <span class="font-mono text-cyan-400 font-bold" id="init-armed-val">20 ARMADOS</span>
             </div>
             <input type="range" min="0" max="150" step="1" value="20" id="init-armed-slider"
@@ -564,7 +564,7 @@
           <!-- 3. Tasa de Inmunidad Natural -->
           <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
             <div class="flex justify-between text-[9px]">
-              <span class="text-slate-300 font-heavy">3. TASA DE INMUNIDAD NATURAL:</span>
+              <span class="text-slate-300 font-heavy flex items-center gap-1">3. TASA DE INMUNIDAD NATURAL: <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: inmunidad" data-help="<b>% de inmunes desde el inicio</b> (sprite exorcizado). Nunca se infectan; un zombi los intenta morder una vez y sigue de largo.">?</span></span>
               <span class="font-mono text-yellow-400 font-bold" id="init-immune-val">8% INMUNES</span>
             </div>
             <input type="range" min="0" max="20" step="1" value="8" id="init-immune-slider"
@@ -575,7 +575,7 @@
           <!-- 4. Tiempo de Incubación (Mordido) -->
           <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
             <div class="flex justify-between text-[9px]">
-              <span class="text-slate-300 font-heavy">4. TIEMPO DE INCUBACIÓN (MORDIDO):</span>
+              <span class="text-slate-300 font-heavy flex items-center gap-1">4. TIEMPO DE INCUBACIÓN (MORDIDO): <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: incubación" data-help="<b>Segundos de mordido a zombi</b> (1 s ≈ 0,5 días). Más largo = brote más lento y más tiempo para lanzar antídoto: el antídoto también cura a los mordidos.">?</span></span>
               <span class="font-mono text-amber-400 font-bold" id="live-incub-text">8s</span>
             </div>
             <input type="range" min="3" max="25" step="1" value="8" id="init-incub-slider"
@@ -585,7 +585,7 @@
 
           <!-- 5. Recursos Limitados -->
           <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1.5">
-            <span class="text-amber-300 font-heavy text-[9px]">5. RECURSOS LIMITADOS:</span>
+            <span class="text-amber-300 font-heavy text-[9px] flex items-center gap-1">5. RECURSOS LIMITADOS: <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: recursos" data-help="<b>Munición:</b> balas compartidas por todos los armados; cada disparo gasta 1 y un zombi necesita 8.<br><b>Cajas de antídoto:</b> stock inicial para lanzar con el botón ANTÍDOTOS del HUD.">?</span></span>
             <div class="grid grid-cols-2 gap-1.5">
               <div>
                 <span class="text-cyan-400 text-[8px] font-heavy block mb-0.5">MUNICIÓN:</span>
@@ -609,9 +609,10 @@
           </div>
 
           <!-- 6. Condiciones y Entorno -->
+          <span class="text-amber-300 font-heavy text-[9px] flex items-center gap-1 -mb-0.5">6. CONDICIONES Y ENTORNO: <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: condiciones" data-help="<b>En el mapa cambian la velocidad de todos</b> (humanos y zombis): más movimiento = más encuentros = contagio más rápido. Se multiplican entre sí.<br>En el Monte Carlo los mismos interruptores multiplican el contagio directamente (Carnaval ×1,3 · Noche ×1,1 · Cerco ×0,7).">?</span></span>
           <div class="grid grid-cols-2 gap-1.5">
             <button class="btn-arcade-dark p-1.5 rounded flex items-center justify-between cursor-pointer"
-              id="slug-btn-night"
+              id="slug-btn-night" data-help="<b>Noche.</b> Oscurece el mapa y todos caminan más lento (×0,8 en vez de ×1,1 de día): el brote avanza más despacio, pero también la respuesta."
               onclick="toggleNightCycle(); document.getElementById('init-night-check').checked = !document.getElementById('init-night-check').checked; SFX.button();">
               <div class="flex flex-col text-left">
                 <span class="font-heavy text-[9px] text-yellow-400" id="slug-lbl-night">MODO DÍA</span>
@@ -620,11 +621,11 @@
               <span class="material-symbols-outlined text-yellow-400 text-sm" id="slug-icon-night">wb_sunny</span>
             </button>
             <button class="btn-arcade-red p-1.5 rounded flex items-center justify-between cursor-pointer"
-              id="slug-btn-carnaval"
+              id="slug-btn-carnaval" data-help="<b>Carnaval.</b> Todos se mueven ×1,3 más rápido: más encuentros zombi–humano por minuto y el virus se expande antes."
               onclick="toggleCarnaval(); document.getElementById('init-carnaval-check').checked = !document.getElementById('init-carnaval-check').checked; SFX.alarm();">
               <div class="flex flex-col text-left">
                 <span class="font-heavy text-[9px] text-white" id="slug-lbl-carnaval">CARNAVAL: ON</span>
-                <span class="text-red-200 font-mono text-[8px]">+300% Multitud</span>
+                <span class="text-red-200 font-mono text-[8px]">×1,3 movimiento</span>
               </div>
               <span class="material-symbols-outlined text-white text-sm animate-bounce"
                 id="slug-icon-carnaval">festival</span>
@@ -636,19 +637,13 @@
             <div class="flex items-center gap-1.5">
               <span class="material-symbols-outlined text-amber-500 text-sm">fence</span>
               <span class="text-slate-300 text-[9px] font-heavy">CERCO VIAL E15 / E30</span>
+              <span class="help-dot" tabindex="0" role="button" aria-label="Ayuda: cerco vial" data-help="<b>Cerco vial.</b> Bloquea las salidas a Montecristi y San Mateo (las rutas se pintan de ámbar) y frena el tránsito ×0,7: el brote queda encerrado en Manta y se expande más lento.">?</span>
             </div>
             <button class="btn-arcade-dark px-2 py-0.5 text-[9px] rounded text-slate-400 cursor-pointer"
               id="slug-btn-cerco"
               onclick="toggleCercoVial(); document.getElementById('init-cerco-check').checked = !document.getElementById('init-cerco-check').checked; SFX.button();">
               DESACTIVADO
             </button>
-          </div>
-
-          <!-- Semilla Monte Carlo (NumPy) -->
-          <div class="bg-black/60 p-2 border border-slate-800 rounded flex items-center justify-between gap-2">
-            <span class="text-slate-300 font-heavy text-[9px]">SEMILLA MONTE CARLO (NUMPY):</span>
-            <input type="number" id="init-mc-seed" value="42" min="0"
-              class="w-20 bg-[#131b22] border border-slate-700 text-cyan-300 font-mono text-[10px] p-1 rounded text-right" />
           </div>
 
           <!-- Synced hidden checkboxes for engine compatibility -->
@@ -804,178 +799,135 @@
     </aside>
   </main>
 
-  <!-- 3. INTERACTIVE SPOOKYTHON SHOWCASE MODAL -->
+  <!-- 3. ENCICLOPEDIA DE PERSONAJES (4 estados SEIR) -->
   <div id="metal-slug-showcase"
-    class="fixed inset-2 sm:inset-6 z-50 bg-[#090d12]/95 backdrop-blur-md border border-amber-500/70 rounded-xl shadow-2xl flex flex-col overflow-hidden hidden">
+    class="fixed inset-2 sm:inset-6 z-50 bg-[#090d12]/95 backdrop-blur-md border border-amber-500/50 rounded-xl shadow-2xl flex flex-col overflow-hidden hidden">
+    <style>
+      #metal-slug-showcase { --s: #34d399; --e: #fbbf24; --i: #f87171; --r: #facc15; }
+      .showcase-card { display: flex; flex-direction: column; padding: 14px; border-radius: 10px; background: rgba(0,0,0,.55);
+        border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); box-shadow: inset 0 3px 0 var(--c); }
+      .showcase-badge { font: 600 9px 'JetBrains Mono', monospace; padding: 2px 6px; border-radius: 4px; color: var(--c);
+        background: color-mix(in srgb, var(--c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+      .showcase-stage { position: relative; height: 176px; display: flex; align-items: center; justify-content: center;
+        border-radius: 8px; border: 1px solid #1e293b; overflow: hidden;
+        background: radial-gradient(ellipse at 50% 85%, color-mix(in srgb, var(--c) 10%, transparent), #070b0e 65%); }
+      .showcase-btn { display: block; width: 100%; padding: 6px; border-radius: 6px; text-align: center; font: 600 10px 'JetBrains Mono', monospace;
+        color: #cbd5e1; background: #0e151b; border: 1px solid #1f2a35; transition: all .15s; cursor: pointer; }
+      .showcase-btn:hover { color: #fff; border-color: #334155; }
+      .showcase-btn.primary { color: var(--c); border-color: color-mix(in srgb, var(--c) 45%, transparent);
+        background: color-mix(in srgb, var(--c) 10%, #0e151b); font-family: 'Russo One', sans-serif; }
+      .showcase-btn.primary:hover { background: color-mix(in srgb, var(--c) 20%, #0e151b); }
+    </style>
+
     <!-- Header -->
-    <div class="bg-black/90 px-4 py-2.5 border-b border-amber-500/50 flex items-center justify-between shrink-0">
-      <div class="flex items-center gap-2.5">
-        <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
-        <div>
-          <h2 class="arcade-title text-sm sm:text-base text-yellow-300 tracking-wider">
-            ENCICLOPEDIA // LA PLAGA ZOMBIE — SPOOKYTHON 2026 (TRACK B)
-          </h2>
-          <span class="text-[9px] text-slate-400 font-mono">
-            Personajes originales pixel art 32x40 diseñados específicamente para los 4 estados del modelo SEIR
-          </span>
-        </div>
+    <div class="bg-black/80 px-5 py-3 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0">
+      <div class="min-w-0">
+        <h2 class="arcade-title text-sm sm:text-base tracking-wider">ENCICLOPEDIA // LA PLAGA ZOMBIE</h2>
+        <p class="text-[10px] text-slate-400 font-mono mt-0.5">Spookython 2026 · Track B · personajes originales en pixel art para los 4 estados del modelo SEIR</p>
       </div>
       <button
-        class="px-2.5 py-1 text-slate-400 hover:text-white bg-slate-800/80 rounded border border-slate-700 text-xs font-mono cursor-pointer"
+        class="px-3 py-1.5 text-slate-400 hover:text-white bg-slate-900 rounded border border-slate-700 text-xs font-mono cursor-pointer shrink-0"
         onclick="closeMetalSlugShowcase();">✕ CERRAR</button>
     </div>
 
-    <!-- Main Content: Character Selector Bar + 4 States Grid -->
-    <div class="flex-1 min-h-0 flex flex-col p-3 overflow-y-auto gap-3">
-      <!-- Character Tabs Header -->
-      <div class="flex items-center gap-1.5 shrink-0 bg-black/60 p-1 rounded-lg border border-slate-800"
-        id="showcase-character-tabs"></div>
-
-      <!-- Banner Estados Preview GIF (Spookython 2026 Track B) -->
-      <div
-        class="bg-black/80 border border-amber-500/40 rounded-lg p-2 flex flex-col items-center justify-center gap-1 shrink-0">
-        <div class="flex items-center justify-between w-full px-2">
-          <span class="text-[9px] font-heavy text-amber-400 flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            VISTA PREVIA INTEGRAL DE ESTADOS SEIR // SPOOKYTHON 2026 (TRACK B)
-          </span>
-          <span class="text-[8px] font-mono text-slate-400">Alta Definicion HD: 48x56 @ 5x (240x280) • 36 Colores •
-            Bucles de 6 Frames</span>
+    <!-- Contenido -->
+    <div class="flex-1 min-h-0 flex flex-col p-4 overflow-y-auto gap-4">
+      <!-- Vista previa: los 4 estados en un solo GIF -->
+      <section class="rounded-lg border border-slate-800 bg-black/50 px-4 py-3 flex flex-col md:flex-row items-center gap-4 shrink-0">
+        <div class="md:w-56 shrink-0 text-center md:text-left">
+          <h3 class="font-heavy text-[11px] text-amber-300">Vista previa de estados</h3>
+          <p class="text-[10px] text-slate-500 font-mono mt-1 leading-relaxed">48×56 px · 36 colores<br>bucles de 6 frames</p>
+          <div class="flex flex-wrap gap-1.5 mt-2 justify-center md:justify-start text-[9px] font-mono">
+            <span class="px-1.5 py-0.5 rounded border border-emerald-500/40 text-emerald-300 bg-emerald-950/50">S · E · I · R</span>
+            <span class="px-1.5 py-0.5 rounded border border-slate-700 text-slate-400">pixel art 8×</span>
+          </div>
         </div>
-        <img src="assets/sprites/estados_preview.gif" alt="Estados SEIR Preview"
-          class="pixelated h-20 sm:h-24 object-contain rounded border border-slate-800 bg-[#060a0e] w-full" />
-      </div>
+        <img src="assets/sprites/estados_preview.gif" alt="Los 4 estados SEIR"
+          class="pixelated h-24 sm:h-28 object-contain rounded border border-slate-800 bg-[#060a0e] max-w-full" />
+      </section>
 
-      <!-- 4 Columns Grid: Sano, Mordido, Zombie, Exorcizado -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 flex-1 min-h-0">
+      <!-- 4 estados -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <!-- Card 1: Sano -->
-        <div
-          class="bg-black/70 border border-emerald-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
-          <div class="w-full flex items-center justify-between border-b border-emerald-950 pb-1 mb-2">
-            <span class="font-heavy text-emerald-400 text-[10px]">1. SANO (S)</span>
-            <span
-              class="text-[8px] font-mono px-1.5 py-0.2 bg-emerald-950 text-emerald-300 rounded border border-emerald-600/50">SUSCEPTIBLE</span>
+        <article class="showcase-card" style="--c:var(--s)">
+          <header class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="font-heavy text-[11px]" style="color:var(--c)">1. SANO (S)</h3>
+            <span class="showcase-badge">SUSCEPTIBLE</span>
+          </header>
+          <div class="showcase-stage">
+            <img id="showcase-img-human" src="assets/sprites/sano.gif" alt="Sano" class="pixelated h-32 object-contain drop-shadow-md" />
           </div>
-          <div
-            class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
-            <img id="showcase-img-human" src="assets/sprites/sano.gif" alt="Sano"
-              class="pixelated h-28 object-contain drop-shadow-md" />
-          </div>
-          <p id="showcase-desc-human" class="text-[9px] text-slate-300 mt-2 leading-tight">
+          <p id="showcase-desc-human" class="text-[11px] text-slate-400 leading-snug mt-3 min-h-[3.2em]">
             Soldadito civil en posición firme saludando con pañuelo rojo ondeando y gorra de campaña.
           </p>
-          <a href="assets/sprites/sano_sheet.png" target="_blank"
-            class="mt-2 w-full py-1 bg-emerald-950/80 border border-emerald-600/60 text-emerald-300 text-[9px] font-heavy rounded hover:bg-emerald-900 cursor-pointer text-center block">
-            📄 HOJA HD (6 FRAMES)
-          </a>
-        </div>
-
+          <div class="mt-auto pt-3 flex flex-col gap-1.5">
+            <a href="assets/sprites/sano_sheet.png" target="_blank" rel="noopener" class="showcase-btn">📄 Hoja de sprites (6 frames)</a>
+          </div>
+        </article>
         <!-- Card 2: Mordido -->
-        <div
-          class="bg-black/70 border border-amber-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
-          <div class="w-full flex items-center justify-between border-b border-amber-950 pb-1 mb-2">
-            <span class="font-heavy text-amber-400 text-[10px]">2. MORDIDO (E)</span>
-            <span
-              class="text-[8px] font-mono px-1.5 py-0.2 bg-amber-950 text-amber-300 rounded border border-amber-600/50">INCUBANDO</span>
+        <article class="showcase-card" style="--c:var(--e)">
+          <header class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="font-heavy text-[11px]" style="color:var(--c)">2. MORDIDO (E)</h3>
+            <span class="showcase-badge">INCUBANDO</span>
+          </header>
+          <div class="showcase-stage">
+            <img id="showcase-img-bitten" src="assets/sprites/mordido.gif" alt="Mordido" class="pixelated h-32 object-contain agent-bitten" />
+            <span class="absolute bottom-2 px-2 py-0.5 rounded text-[9px] font-mono text-amber-300 bg-amber-950/90 border border-amber-500/50">virus Z: incubando…</span>
           </div>
-          <div
-            class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
-            <img id="showcase-img-bitten" src="assets/sprites/mordido.gif" alt="Mordido"
-              class="pixelated h-28 object-contain agent-bitten" />
-            <div
-              class="absolute bottom-1 bg-amber-950/90 border border-amber-500/60 px-2 py-0.5 rounded text-[8px] font-mono text-amber-300">
-              VIRUS Z: INCUBANDO...
-            </div>
-          </div>
-          <p id="showcase-desc-bitten" class="text-[9px] text-slate-300 mt-2 leading-tight">
+          <p id="showcase-desc-bitten" class="text-[11px] text-slate-400 leading-snug mt-3 min-h-[3.2em]">
             Convulsionando con sudor frío, marcas de mordedura viva, sangre goteando y red de venas infectadas.
           </p>
-          <a href="assets/sprites/mordido_sheet.png" target="_blank"
-            class="mt-2 w-full py-1 bg-amber-950/80 border border-amber-600/60 text-amber-300 text-[9px] font-heavy rounded hover:bg-amber-900 cursor-pointer text-center block">
-            📄 HOJA HD (6 FRAMES)
-          </a>
-        </div>
-
+          <div class="mt-auto pt-3 flex flex-col gap-1.5">
+            <a href="assets/sprites/mordido_sheet.png" target="_blank" rel="noopener" class="showcase-btn">📄 Hoja de sprites (6 frames)</a>
+          </div>
+        </article>
         <!-- Card 3: Zombie -->
-        <div
-          class="bg-black/70 border border-red-500/60 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
-          <div class="w-full flex items-center justify-between border-b border-red-950 pb-1 mb-2">
-            <span class="font-heavy text-red-400 text-[10px]">3. ZOMBIE (I)</span>
-            <span
-              class="text-[8px] font-mono px-1.5 py-0.2 bg-red-950 text-red-300 rounded border border-red-600/50 animate-pulse">INFECTADO</span>
-          </div>
-          <div
-            class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
-            <img id="showcase-img-zombie" src="assets/sprites/zombie.gif" alt="Zombie"
-              class="pixelated h-28 object-contain agent-infected" />
+        <article class="showcase-card" style="--c:var(--i)">
+          <header class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="font-heavy text-[11px]" style="color:var(--c)">3. ZOMBIE (I)</h3>
+            <span class="showcase-badge">INFECTADO</span>
+          </header>
+          <div class="showcase-stage">
+            <img id="showcase-img-zombie" src="assets/sprites/zombie.gif" alt="Zombie" class="pixelated h-32 object-contain agent-infected" />
             <div id="showcase-vomit-banner"
-              class="hidden absolute top-2 right-2 px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-heavy rounded animate-bounce">
-              ¡ATAQUE ZOMBIE!
-            </div>
+              class="hidden absolute top-2 right-2 px-1.5 py-0.5 bg-red-600 text-white text-[9px] font-heavy rounded">¡ATAQUE ZOMBIE!</div>
           </div>
-          <p id="showcase-desc-zombie" class="text-[9px] text-slate-300 mt-2 leading-tight">
-            Paso lisiado de marcha voraz, 3 costillas expuestas con sangre coagulada, mandíbula desencajada y garras
-            extendidas.
+          <p id="showcase-desc-zombie" class="text-[11px] text-slate-400 leading-snug mt-3 min-h-[3.2em]">
+            Paso lisiado de marcha voraz, costillas expuestas con sangre coagulada, mandíbula desencajada y garras extendidas.
           </p>
-          <div class="mt-2 flex flex-col gap-1 w-full">
-            <button
-              class="w-full py-1 bg-red-950/80 border border-red-600/60 text-red-300 text-[9px] font-heavy rounded hover:bg-red-900 cursor-pointer"
-              onclick="testShowcaseBloodVomit();">
-              🧟 ACTIVAR ATAQUE ZOMBIE
-            </button>
-            <a href="assets/sprites/zombie_sheet.png" target="_blank"
-              class="w-full py-0.5 bg-slate-900/80 border border-slate-700 text-slate-300 text-[8px] font-mono rounded hover:text-white cursor-pointer text-center block">
-              📄 HOJA HD (6 FRAMES)
-            </a>
+          <div class="mt-auto pt-3 flex flex-col gap-1.5">
+            <button class="showcase-btn primary" onclick="testShowcaseBloodVomit();">🧟 Activar ataque zombie</button>
+            <a href="assets/sprites/zombie_sheet.png" target="_blank" rel="noopener" class="showcase-btn">📄 Hoja de sprites (6 frames)</a>
           </div>
-        </div>
-
+        </article>
         <!-- Card 4: Exorcizado -->
-        <div
-          class="bg-black/70 border border-yellow-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
-          <div class="w-full flex items-center justify-between border-b border-yellow-950 pb-1 mb-2">
-            <span class="font-heavy text-yellow-400 text-[10px]">4. EXORCIZADO (R)</span>
-            <span
-              class="text-[8px] font-mono px-1.5 py-0.2 bg-yellow-950 text-yellow-300 rounded border border-yellow-600/50">RECUPERADO</span>
+        <article class="showcase-card" style="--c:var(--r)">
+          <header class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="font-heavy text-[11px]" style="color:var(--c)">4. EXORCIZADO (R)</h3>
+            <span class="showcase-badge">INMUNE</span>
+          </header>
+          <div class="showcase-stage">
+            <img id="showcase-img-immune" src="assets/sprites/exorcizado.gif" alt="Exorcizado" class="pixelated h-32 object-contain agent-immune" />
           </div>
-          <div
-            class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
-            <img id="showcase-img-immune" src="assets/sprites/exorcizado.gif" alt="Exorcizado"
-              class="pixelated h-28 object-contain agent-immune" />
-          </div>
-          <p id="showcase-desc-immune" class="text-[9px] text-slate-300 mt-2 leading-tight">
-            Flotación senoidal en túnica astral con pliegues etéreos, aureola dorada de 4 rayos y estrellas de bendición
-            sagrada.
+          <p id="showcase-desc-immune" class="text-[11px] text-slate-400 leading-snug mt-3 min-h-[3.2em]">
+            Inmune natural: flota en túnica astral con aureola dorada. Ningún zombi puede infectarlo.
           </p>
-          <div class="mt-2 flex flex-col gap-1 w-full">
-            <button
-              class="w-full py-1 bg-yellow-950/80 border border-yellow-600/60 text-yellow-300 text-[9px] font-heavy rounded hover:bg-yellow-900 cursor-pointer"
-              onclick="testShowcaseImmuneShield();">
-              ✨ BENDICIÓN PURIFICADORA
-            </button>
-            <a href="assets/sprites/exorcizado_sheet.png" target="_blank"
-              class="w-full py-0.5 bg-slate-900/80 border border-slate-700 text-slate-300 text-[8px] font-mono rounded hover:text-white cursor-pointer text-center block">
-              📄 HOJA HD (6 FRAMES)
-            </a>
+          <div class="mt-auto pt-3 flex flex-col gap-1.5">
+            <button class="showcase-btn primary" onclick="testShowcaseImmuneShield();">✨ Bendición purificadora</button>
+            <a href="assets/sprites/exorcizado_sheet.png" target="_blank" rel="noopener" class="showcase-btn">📄 Hoja de sprites (6 frames)</a>
           </div>
-        </div>
+        </article>
       </div>
     </div>
 
-    <!-- Footer Actions -->
-    <div
-      class="bg-black/80 px-4 py-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
-      <span class="text-slate-400 text-[9px] font-mono">
-        💡 En el mapa en vivo: Haz clic en "ENFOCAR (17X)" para ver estos micro-sprites en acción en las calles de
-        Manta.
-      </span>
-      <div class="flex items-center gap-2">
-        <button class="btn-arcade-gold px-3 py-1 rounded text-[10px] flex items-center gap-1 cursor-pointer"
-          onclick="closeMetalSlugShowcase(); zoomToCombat(); SFX.button();">
-          <span class="material-symbols-outlined text-xs">center_focus_strong</span>
-          <span>IR AL MAPA (ZOOM 17X)</span>
-        </button>
-      </div>
+    <!-- Footer -->
+    <div class="bg-black/80 px-5 py-2.5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <span class="text-slate-500 text-[10px] font-mono">💡 Usa «ENFOCAR (17X)» en el mapa para ver estos sprites en acción por las calles de Manta.</span>
+      <button class="btn-arcade-gold px-3 py-1.5 rounded text-[10px] flex items-center gap-1 cursor-pointer"
+        onclick="closeMetalSlugShowcase(); zoomToCombat(); SFX.button();">
+        <span class="material-symbols-outlined text-xs">center_focus_strong</span>
+        <span>IR AL MAPA (ZOOM 17X)</span>
+      </button>
     </div>
   </div>
 
@@ -1001,7 +953,8 @@
   </script>
 
   <!-- MAIN SIMULATION ENGINE -->
-  <script src="js/engine.js?v=20261027_fixed_engine"></script>
+  <script src="js/engine.js?v=20261028_caza2"></script>
+  <script src="js/help.js?v=20261028_help"></script>
 </body>
 
 </html>

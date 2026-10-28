@@ -100,7 +100,8 @@ graph TB
     JS -->|"Leaflet"| TILES
     MCH -->|"GET /api/montecarlo/results"| MAIN
     MAIN --> ENG
-    MAIN -->|"launch → start()"| MC
+    MAIN -->|"POST /api/montecarlo/run → start()"| MC
+    MAIN -->|"POST /api/zombie/decide"| BR["brain.py<br/>Ollama Cloud / heurística"]
     ENG --> PRE
     MC --> PRE
 ```
@@ -110,12 +111,12 @@ graph TB
 | Archivo | Responsabilidad |
 | :--- | :--- |
 | `index.html` | Mapa, HUD y controles. Carga Leaflet (unpkg) y Tailwind (CDN). |
-| `js/engine.js` | Estado local, `syncBackend()`, agentes sobre la red vial, colisiones y combate, `simLoop()`, HUD, curva SEIR en vivo, escenarios, airdrop, polling del Monte Carlo. |
+| `js/engine.js` | Estado local, `syncBackend()`, agentes sobre la red vial, colisiones y combate, `simLoop()`, HUD, curva SEIR en vivo, escenarios, airdrop, cerebro del paciente cero (`/api/zombie/decide`). |
 | `js/manta-config.js` | 20 nodos (intersecciones reales de Manta) y centro del mapa. |
 | `assets/manta_routes.js` | Geometría de rutas entre nodos, generada con `scripts/`. |
 | `js/sprites.js` | `HERO_ROSTER`, `MANTA_SPRITES` (GIFs). |
 | `js/audio.js` | `SFX`. |
-| `montecarlo.html` | Dashboard con 3 gráficas (`chart-i`, `chart-seir`, `chart-hist`). |
+| `montecarlo.html` | Laboratorio multi-escenario: configurador (fijo o rango por parámetro), comparativa KPI, banda P5–P95 de zombis, rango del pico, probabilidades y sensibilidad (Spearman). |
 
 La simulación por agente (movimiento, mordidas, incubación, disparos) corre en el navegador. El servidor es la fuente de verdad de los contadores, la munición, las cajas, el reloj y el puntaje.
 
@@ -135,10 +136,12 @@ La simulación por agente (movimiento, mordidas, incubación, disparos) corre en
 | GET | `/api/state` | Estado actual de la simulación. |
 | POST | `/api/sim/reset` | Reinicia el estado. |
 | POST | `/api/sim/scenario` | `{scenario}`: aplica el preset (incluye R₀). |
-| POST | `/api/sim/launch` | `LaunchRequest`: paciente cero y arranque del Monte Carlo (50–5000 runs). |
+| POST | `/api/sim/launch` | `LaunchRequest`: paciente cero. No arranca el Monte Carlo (ADR-003). |
 | POST | `/api/sim/tick` | `{infected, bitten, immune, ammo}`: avanza el reloj 10 min. |
 | POST | `/api/sim/combat-hit` | `{zombieId}`: −1 bala, −1 HP; baja al 8.º impacto. |
-| POST | `/api/sim/airdrop` | `{healedCount}`: −1 caja, I → R. |
+| POST | `/api/sim/airdrop` | `{healedCount}`: −1 caja, curados → sanos (no inmuniza). |
+| POST | `/api/montecarlo/run` | `{runs, seed, scenarios:[{name, params}]}`; params fijos o `{min, max}`. Devuelve `runId`. |
+| POST | `/api/zombie/decide` | Próxima ruta del paciente cero: LLM en Ollama Cloud o heurística (ADR-004). |
 | GET | `/api/montecarlo/status` | `idle` / `running` / `done` / `error` y progreso. |
 | GET | `/api/montecarlo/results` | Resultados; responde 202 mientras corre. |
 | GET | `/montecarlo` | Sirve `montecarlo.html`. |
@@ -161,7 +164,7 @@ CORS abierto (`allow_origins=["*"]`).
 
 ## 5. Monte Carlo (`backend/montecarlo.py`)
 
-Hilo daemon con `Lock` para status y resultados. Cada `start()` cancela la corrida previa. Las réplicas se ejecutan en 10 lotes sobre un único `default_rng(seed)`, con `sleep(0.05)` entre lotes para ceder CPU a la API.
+Hilo daemon con `Lock` para status y resultados; `start()` está serializado y cancela la corrida previa, y cada corrida lleva un `runId`. Por escenario, las réplicas se ejecutan en 10 lotes sobre un único `default_rng(seed)`. Cada parámetro en rango se muestrea uniforme por réplica.
 
 Por día y por réplica, vectorizado en NumPy, con N = 271 145:
 
@@ -171,11 +174,11 @@ Por día y por réplica, vectorizado en NumPy, con N = 271 145:
 | E → I | `Binomial(E, 1 − exp(−1/τ))`, τ = max(0.5, incubaciónSeg · 0.5) días |
 | I → abatido | `min(Binomial(I, p_kill), I, ⌊munición / 10⌋)`, p_kill = 1 − exp(−1.2 · armados / agentes) |
 | Laboratorio | +1 caja cada 10 días |
-| Antídoto | cada 5 días, si hay caja: `Binomial(I, 0.25)` y `Binomial(E, 0.25)` → R |
+| Antídoto | cada 5 días, si hay caja: `Binomial(I, 0.25)` y `Binomial(E, 0.25)` → S; armados += ⌈0.15 · curados⌉ |
 
 `mult` = 1.3 en carnaval × 1.1 de noche × 0.7 con cerco vial.
 
-**Salida:** series S/E/I/R (media, P5, P25, P75, P95), estadísticas del pico, día del pico, infectados finales, total contagiado, abatidos y munición restante; probabilidad de contención y de agotamiento de munición; histograma de picos.
+**Salida (por escenario):** series S/E/I/R (media, P5, P25, P75, P95), estadísticas del pico, día del pico, infectados finales, total contagiado, abatidos y munición restante; probabilidad de contención y de agotamiento de munición; histograma de picos; sensibilidad Spearman (rangos promedio) de cada parámetro en rango frente al pico y al total de afectados.
 
 **Rendimiento:** 400 runs × 60 días ≈ 2 s.
 
@@ -198,7 +201,6 @@ sequenceDiagram
     U->>FE: Lanzar brote
     FE->>API: POST /api/sim/launch
     API->>ENG: launch_outbreak()
-    API->>MC: start(state, runs, seed)
 
     loop simLoop
         FE->>FE: mueve agentes, contagios, colisiones
@@ -212,11 +214,13 @@ sequenceDiagram
         end
     end
 
+    U->>FE: abre /montecarlo y define escenarios
+    FE->>API: POST /api/montecarlo/run
+    API->>MC: start(scenarios, runs, seed)
     FE->>API: GET /api/montecarlo/status
     API-->>FE: done
-    U->>FE: abre /montecarlo
     FE->>API: GET /api/montecarlo/results
-    API-->>FE: series, summary, histogram
+    API-->>FE: por escenario: series, summary, histogram, sensitivity
 ```
 
 ---

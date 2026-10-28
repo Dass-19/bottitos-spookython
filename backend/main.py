@@ -3,18 +3,23 @@ Servidor FastAPI para MantaZero: Epidemic Command:
 Expone los endpoints REST del motor SEIR en /api/* y sirve el frontend en /.
 """
 
+import logging
 import os
 from pathlib import Path
-from typing import Optional
-from fastapi import FastAPI
+from typing import Dict, List, Optional, Union
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .presets import DISASTER_PRESETS, ZOMBIE_MAX_HP
 from .engine import sim_engine
-from .montecarlo import mc_runner
+from .montecarlo import mc_runner, NUM_PARAMS, BOOL_PARAMS
+from . import brain
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(
     title="MantaZero: Epidemic Command SEIR Simulation Engine API",
@@ -39,8 +44,6 @@ class LaunchRequest(BaseModel):
     epicenter: Optional[str] = "Tarqui"
     agentCount: Optional[int] = 95
     armedCount: Optional[int] = 20
-    mcSeed: Optional[int] = 42
-    mcRuns: Optional[int] = 400
     immunityRate: Optional[float] = 0.08
     incubationSeconds: Optional[float] = 8.0
     ammo: Optional[int] = 800
@@ -48,6 +51,53 @@ class LaunchRequest(BaseModel):
     isCarnaval: Optional[bool] = True
     isNight: Optional[bool] = False
     cercoVial: Optional[bool] = False
+
+
+class Range(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+    min: float
+    max: float
+
+
+class MCScenario(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+    name: str = Field(min_length=1, max_length=60)
+    params: Dict[str, Union[bool, float, Range]]
+
+    @model_validator(mode="after")
+    def check_params(self):
+        for key, v in self.params.items():
+            if key in BOOL_PARAMS:
+                if not isinstance(v, bool):
+                    raise ValueError(f"{key} debe ser booleano")
+                continue
+            spec = NUM_PARAMS.get(key)
+            if spec is None or isinstance(v, bool):
+                raise ValueError(f"parámetro no válido: {key}")
+            lo, hi = (v.min, v.max) if isinstance(v, Range) else (v, v)
+            if lo > hi:
+                raise ValueError(f"{key}: min > max")
+            if lo < spec["min"] or hi > spec["max"]:
+                raise ValueError(f"{key} fuera de [{spec['min']}, {spec['max']}]")
+        return self
+
+
+class MCRunRequest(BaseModel):
+    scenarios: List[MCScenario] = Field(min_length=1, max_length=8)
+    runs: int = Field(default=400, ge=50, le=5000)
+    seed: int = 42
+
+
+class RouteOption(BaseModel):
+    route: str = Field(max_length=80)
+    humans: int = Field(default=0, ge=0)
+    armed: int = Field(default=0, ge=0)
+    immune: int = Field(default=0, ge=0)
+
+
+class DecideRequest(BaseModel):
+    current: str = Field(default="", max_length=80)
+    options: List[RouteOption] = Field(min_length=1, max_length=12)
 
 
 class TickRequest(BaseModel):
@@ -63,6 +113,13 @@ class CombatHitRequest(BaseModel):
 
 class AirdropRequest(BaseModel):
     healedCount: int = 0
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(_: Request, exc: RequestValidationError):
+    # Sin eco de "input": un NaN/inf en la entrada rompería la serialización JSON (500)
+    detail = [{"loc": e["loc"], "msg": e["msg"], "type": e["type"]} for e in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": detail})
 
 
 @app.get("/api/health")
@@ -96,12 +153,7 @@ def switch_scenario(req: ScenarioRequest):
 
 @app.post("/api/sim/launch")
 def launch_simulation(req: LaunchRequest):
-    data = req.model_dump(exclude_none=True)
-    state = sim_engine.launch_outbreak(data)
-    # Monte Carlo en segundo plano con los mismos parámetros y semilla NumPy
-    runs = max(50, min(int(data.get("mcRuns", 400)), 5000))
-    mc_runner.start(state, runs, int(data.get("mcSeed", 42)))
-    return {"state": state, "montecarlo": mc_runner.status()}
+    return {"state": sim_engine.launch_outbreak(req.model_dump(exclude_none=True))}
 
 
 @app.post("/api/sim/tick")
@@ -117,6 +169,17 @@ def register_combat_hit(req: CombatHitRequest):
 @app.post("/api/sim/airdrop")
 def deploy_airdrop(req: AirdropRequest):
     return sim_engine.deploy_airdrop(req.healedCount)
+
+
+@app.post("/api/montecarlo/run")
+def montecarlo_run(req: MCRunRequest):
+    scenarios = [s.model_dump() for s in req.scenarios]
+    return mc_runner.start(scenarios, req.runs, req.seed)
+
+
+@app.post("/api/zombie/decide")
+def zombie_decide(req: DecideRequest):
+    return brain.decide([o.model_dump() for o in req.options], req.current)
 
 
 @app.get("/api/montecarlo/status")

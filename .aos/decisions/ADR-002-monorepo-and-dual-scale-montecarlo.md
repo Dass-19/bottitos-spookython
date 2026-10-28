@@ -1,7 +1,7 @@
 ---
 id: 202610272314
 type: decision
-status: vigente
+status: vigente (consecuencias de Monte Carlo actualizadas por ADR-003)
 created: 2026-10-27
 ---
 

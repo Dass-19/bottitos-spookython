@@ -1,6 +1,6 @@
 // ==========================================================================
 // MantaZero: Epidemic Command // GPS LANDMARKS & STREET NETWORK (CALLES / AVENIDAS / VÍAS)
-// 20 Official Street & Avenue Intersections of Manta Cantón
+// 30 nodos de calles y barrios reales de Manta (OSM), unidos por 52 corredores viales
 // ==========================================================================
 
 const MANTA_CONFIG = {
@@ -147,10 +147,80 @@ const MANTA_CONFIG = {
       name: 'Ruta Spondylus E15 y Santa Marianita',
       street: 'Ruta del Spondylus E15',
       desc: 'Playa balnearia y límite suroeste del cantón.'
+    },
+    SantaMartha: {
+      lat: -0.9569,
+      lng: -80.73466,
+      name: 'Av. 34 (Santa Martha)',
+      street: 'Avenida 34',
+      desc: 'Barrio residencial al sur del centro de Manta.'
+    },
+    AbdonCalderon: {
+      lat: -0.9581,
+      lng: -80.74193,
+      name: 'Barrio Abdón Calderón',
+      street: 'Calles interiores',
+      desc: 'Barrio popular denso entre Santa Martha y la ULEAM.'
+    },
+    Manta2000: {
+      lat: -0.95914,
+      lng: -80.75117,
+      name: 'Av. 4 (Manta 2000)',
+      street: 'Avenida 4',
+      desc: 'Urbanización residencial del sector Barbasquillo.'
+    },
+    CiudadDelSol: {
+      lat: -0.96368,
+      lng: -80.75412,
+      name: 'Calle Principal de Ciudad del Sol',
+      street: 'Calle Principal',
+      desc: 'Ciudadela residencial en el borde suroeste urbano.'
+    },
+    Miraflores: {
+      lat: -0.95665,
+      lng: -80.71923,
+      name: 'Calle 1 de Enero (Miraflores)',
+      street: 'Calle 1 de Enero',
+      desc: 'Barrio de Tarqui entre el centro y Jocay.'
+    },
+    LosGeranios: {
+      lat: -0.97843,
+      lng: -80.72525,
+      name: 'Ciudadela Los Geranios',
+      street: 'Calles interiores',
+      desc: 'Ciudadela residencial de la parroquia Tarqui.'
+    },
+    Urbirrios: {
+      lat: -0.98284,
+      lng: -80.7228,
+      name: 'Calle H (Urbirríos)',
+      street: 'Calle H',
+      desc: 'Urbanización popular al sur de Tarqui.'
+    },
+    NuevaEsperanza: {
+      lat: -0.98491,
+      lng: -80.71248,
+      name: 'Calle 103 (Nueva Esperanza)',
+      street: 'Calle 103',
+      desc: 'Barrio de la parroquia Eloy Alfaro.'
+    },
+    LaAurora: {
+      lat: -0.98088,
+      lng: -80.69792,
+      name: 'Ciudadela La Aurora',
+      street: 'Calles interiores',
+      desc: 'Ciudadela residencial de la parroquia Eloy Alfaro.'
+    },
+    Altamira: {
+      lat: -0.96788,
+      lng: -80.689,
+      name: 'Altamira (Los Esteros)',
+      street: 'Calles interiores',
+      desc: 'Urbanización al sur de Los Esteros, cerca de El Palmar.'
     }
   },
 
-  // 30 Corredores Viales Urbanos
+  // Corredores viales (geometría real en assets/manta_routes.js, generada con scripts/generate_all_routes.js)
   routePairs: {
     // Eje Costero & Portuario
     Murcielago_PuertoManta: ['Murcielago', 'PuertoManta'],
@@ -192,7 +262,29 @@ const MANTA_CONFIG = {
     Jocay_EloyAlfaro: ['Jocay', 'EloyAlfaro'],
     ULEAM_EloyAlfaro: ['ULEAM', 'EloyAlfaro'],
     EloyAlfaro_Montecristi: ['EloyAlfaro', 'Montecristi'],
-    Jocay_Montecristi: ['Jocay', 'Montecristi']
+    Jocay_Montecristi: ['Jocay', 'Montecristi'],
+
+    // Barrios residenciales (dispersión de la población)
+    HospitalRZ_SantaMartha: ['HospitalRZ', 'SantaMartha'],
+    SantaMartha_AbdonCalderon: ['SantaMartha', 'AbdonCalderon'],
+    AbdonCalderon_ULEAM: ['AbdonCalderon', 'ULEAM'],
+    AbdonCalderon_Manta2000: ['AbdonCalderon', 'Manta2000'],
+    ULEAM_Manta2000: ['ULEAM', 'Manta2000'],
+    Manta2000_CiudadDelSol: ['Manta2000', 'CiudadDelSol'],
+    CiudadDelSol_AbdonCalderon: ['CiudadDelSol', 'AbdonCalderon'],
+    SantaMartha_VeinteDeMayo: ['SantaMartha', 'VeinteDeMayo'],
+    Jocay_Miraflores: ['Jocay', 'Miraflores'],
+    Miraflores_HospitalRZ: ['Miraflores', 'HospitalRZ'],
+    Miraflores_VeinteDeMayo: ['Miraflores', 'VeinteDeMayo'],
+    VeinteDeMayo_LosGeranios: ['VeinteDeMayo', 'LosGeranios'],
+    LosGeranios_Urbirrios: ['LosGeranios', 'Urbirrios'],
+    Urbirrios_NuevaEsperanza: ['Urbirrios', 'NuevaEsperanza'],
+    NuevaEsperanza_EloyAlfaro: ['NuevaEsperanza', 'EloyAlfaro'],
+    NuevaEsperanza_LaAurora: ['NuevaEsperanza', 'LaAurora'],
+    LaAurora_EloyAlfaro: ['LaAurora', 'EloyAlfaro'],
+    LaAurora_Altamira: ['LaAurora', 'Altamira'],
+    Altamira_Palmar: ['Altamira', 'Palmar'],
+    Altamira_LosEsteros: ['Altamira', 'LosEsteros']
   },
 
   // Haversine distance in meters

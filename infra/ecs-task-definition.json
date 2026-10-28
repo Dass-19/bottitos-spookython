@@ -40,6 +40,10 @@
         {
           "name": "PORT",
           "value": "8080"
+        },
+        {
+          "name": "OLLAMA_MODEL",
+          "value": "nemotron-3-ultra"
         }
       ]
     }
