@@ -1,0 +1,14 @@
+MANTAZERO DEPLOYMENT (HTTPS SECURE)
+=====================================
+URL Pública Oficial (HTTPS): https://d25jz4tlj2zdm.cloudfront.net/
+Dashboard Monte Carlo:       https://d25jz4tlj2zdm.cloudfront.net/montecarlo
+Healthcheck:                 https://d25jz4tlj2zdm.cloudfront.net/api/health
+
+Detalles de Infraestructura:
+- CloudFront Distribution ID: E1FNOA31MWJ4YA
+- Dominio CloudFront:         d25jz4tlj2zdm.cloudfront.net
+- SSL/TLS:                    Certificado Oficial Amazon (HTTPS Port 443)
+- Origin Load Balancer:       http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com (Port 80)
+- ECS Cluster:                mantazero-cluster
+- ECS Service:                maintazero-service
+- Region:                     us-east-1

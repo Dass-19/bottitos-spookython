@@ -10,7 +10,8 @@ Contenedor único en ECS Fargate, región `us-east-1`.
 
 ```mermaid
 graph LR
-    User["Usuario<br/>navegador"] -->|"HTTP :80"| ALB["ALB<br/>mantazero-alb"]
+    User["Usuario<br/>navegador"] -->|"HTTPS :443"| CF["CloudFront<br/>d25jz4tlj2zdm.cloudfront.net"]
+    CF -->|"HTTP :80"| ALB["ALB<br/>mantazero-alb"]
 
     subgraph AWS["AWS us-east-1"]
         subgraph VPC["VPC 172.31.0.0/16 · subred pública"]
@@ -32,7 +33,8 @@ graph LR
 
 | Componente | Configuración |
 | :--- | :--- |
-| ALB | Listener HTTP :80, target en el contenedor :8080. Sin HTTPS: usa el DNS por defecto del ALB, sin certificado ACM. |
+| CloudFront | Distribución `E1FNOA31MWJ4YA`, `d25jz4tlj2zdm.cloudfront.net`. Certificado de Amazon, `redirect-to-https`, origen `http-only` al ALB. Cache policy `CachingDisabled` y origin request `AllViewerExceptHostHeader`: la API no se cachea. Todos los métodos HTTP. (`infra/cloudfront-distribution.json`) |
+| ALB | Listener HTTP :80 (origen de CloudFront), target en el contenedor :8080. |
 | Security Group | Inbound TCP 8080 desde `0.0.0.0/0` (`infra/deploy-ecs.ps1`). |
 | Tarea | `mantazero:4`, 0.25 vCPU / 512 MB, `assignPublicIp=ENABLED`, HEALTHCHECK `GET /api/health` (start period 30 s). |
 | IAM | `ecsTaskExecutionRole`: lectura de ECR y escritura de logs. |
@@ -53,6 +55,8 @@ graph LR
 1. `Dockerfile`: imagen `python:3.14-slim` que copia `backend/` y `frontend/` y arranca con `python -m backend.main`.
 2. `infra/buildspec.yml`: CodeBuild hace login en ECR, `docker build` y `push`.
 3. `infra/deploy-ecs.ps1` + `infra/ecs-task-definition.json`: crean el log group, registran la task definition y crean el cluster y el servicio.
+
+4. `infra/deploy-cloudfront.ps1` + `infra/cloudfront-distribution.json`: crean la distribución CloudFront con el ALB como origen.
 
 El ALB no está en los scripts; se creó desde la consola.
 
@@ -209,11 +213,12 @@ sequenceDiagram
 
 ## 7. Seguridad
 
-**Estado actual:** sin autenticación, CORS `*`, HTTP sin TLS, Security Group 8080 abierto a Internet (se puede entrar a la tarea sin pasar por el ALB). No hay credenciales en el código ni base de datos.
+**Estado actual:** HTTPS en CloudFront. Sin autenticación y con CORS `*`. El ALB sigue aceptando HTTP directo en :80 y el Security Group deja el 8080 abierto a Internet, así que se puede saltar CloudFront. No hay credenciales en el código ni base de datos.
 
 **Pendiente para producción:**
 
-- [ ] HTTPS: dominio propio + ACM en el ALB, o CloudFront delante.
+- [x] HTTPS con CloudFront.
+- [ ] ALB que solo acepte tráfico de CloudFront (prefix list `com.amazonaws.global.cloudfront.origin-facing` o header secreto).
 - [ ] Security Group de la tarea que solo acepte tráfico del SG del ALB.
 - [ ] CORS restringido al dominio.
 - [ ] Rate limiting y WAF.

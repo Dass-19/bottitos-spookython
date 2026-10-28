@@ -7,7 +7,7 @@ Región `us-east-1`. Precios on-demand de lista; no incluyen Free Tier ni crédi
 | Despliegue | USD/mes | Componentes |
 | :--- | ---: | :--- |
 | Local | 0.00 | Uvicorn + frontend estático |
-| **AWS ECS Fargate (actual)** | **36.41** | 1 tarea Fargate, ALB, ECR, CloudWatch Logs |
+| **AWS ECS Fargate (actual)** | **36.41** | CloudFront, ALB, 1 tarea Fargate, ECR, CloudWatch Logs |
 | AWS serverless (alternativa) | ~137.50 | Lambda, API Gateway, S3, CloudFront |
 | AWS producción escalada | ~250–450 | Multi-AZ, auto-scaling 2–10 tareas, WAF |
 
@@ -50,6 +50,10 @@ Imagen de ~200 MB × $0.10 por GB-mes = **$0.02/mes**.
 
 ~1 GB de ingesta × $0.50 por GB = **$0.50/mes**.
 
+### CloudFront (`d25jz4tlj2zdm.cloudfront.net`)
+
+Always Free: 1 TB de salida y 10 M de peticiones al mes. HTTPS con el certificado por defecto de CloudFront, sin costo extra: **$0.00/mes**.
+
 ### Transferencia de salida
 
 ~1.5 MB por sesión. Los primeros 100 GB/mes son gratis: **$0.00**.
@@ -63,6 +67,7 @@ Imagen de ~200 MB × $0.10 por GB-mes = **$0.02/mes**.
 | IPv4 públicas (×3) | $0.005 / h c/u | 10.80 |
 | ECR | $0.10 / GB-mes | 0.02 |
 | CloudWatch Logs | $0.50 / GB | 0.50 |
+| CloudFront | Always Free hasta 1 TB / 10 M req | 0.00 |
 | Data transfer out | gratis hasta 100 GB | 0.00 |
 | **Total** | | **36.41** |
 

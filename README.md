@@ -16,7 +16,7 @@ Simulación epidemiológica SEIR estocástica con intervención táctica sobre l
 
 <p align="center">
 
-[![AWS ECS Fargate](https://img.shields.io/badge/AWS-ECS%20Fargate%20(us--east--1)-FF9900?style=flat-square&logo=amazon-aws)](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)
+[![AWS ECS Fargate](https://img.shields.io/badge/AWS-ECS%20Fargate%20(us--east--1)-FF9900?style=flat-square&logo=amazon-aws)](https://d25jz4tlj2zdm.cloudfront.net/)
 [![Python](https://img.shields.io/badge/Python-3.14-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-%E2%89%A50.100-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![NumPy](https://img.shields.io/badge/NumPy-SEIR%20vectorizado-013243?style=flat-square&logo=numpy)](https://numpy.org/)
@@ -30,11 +30,12 @@ Simulación epidemiológica SEIR estocástica con intervención táctica sobre l
 
 | Recurso | Valor |
 | :--- | :--- |
-| Aplicación | http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/ |
-| Dashboard Monte Carlo | http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/montecarlo |
+| Aplicación (HTTPS) | https://d25jz4tlj2zdm.cloudfront.net/ |
+| Dashboard Monte Carlo | https://d25jz4tlj2zdm.cloudfront.net/montecarlo |
 | Healthcheck | `GET /api/health` |
 | Región | `us-east-1` (N. Virginia) |
-| Load Balancer | ALB `mantazero-alb`, listener HTTP :80 → contenedor :8080 |
+| CDN / TLS | CloudFront `E1FNOA31MWJ4YA` (`d25jz4tlj2zdm.cloudfront.net`), certificado de Amazon, HTTP → HTTPS, sin caché |
+| Load Balancer | ALB `mantazero-alb` (origen de CloudFront), listener HTTP :80 → contenedor :8080 |
 | Cluster | `mantazero-cluster` (ECS, launch type Fargate) |
 | Servicio activo | `maintazero-service` → task definition `mantazero:4` (0.25 vCPU, 512 MB) |
 | Servicio anterior | `mantazero-service` → `mantazero:1` |
@@ -115,7 +116,7 @@ Misma configuración + misma semilla ⇒ mismo resultado (`np.random.default_rng
 R₀ no es un parámetro de `/api/sim/launch`: lo fija el escenario. Para reproducir:
 
 ```bash
-BASE=http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com
+BASE=https://d25jz4tlj2zdm.cloudfront.net
 
 curl -X POST $BASE/api/sim/reset
 curl -X POST $BASE/api/sim/scenario -H "Content-Type: application/json" -d '{"scenario": "B"}'   # R0 = 2.35
@@ -159,9 +160,9 @@ Detalle en [docs/arquitectura.md](docs/arquitectura.md). El diagrama completo y 
 | Cliente | HTML5, Vanilla JS, Leaflet 1.9.4 (tiles ArcGIS), Tailwind, Chart.js 4.4.1 |
 | API | FastAPI + Uvicorn, modelos Pydantic, frontend servido como estático |
 | Simulación | `SeirSimulationEngine` (estado en vivo), `MonteCarloRunner` (NumPy en hilo de fondo) |
-| Infraestructura | ECR → ECS Fargate detrás de un ALB, CloudWatch Logs, IAM `ecsTaskExecutionRole` |
+| Infraestructura | CloudFront → ALB → ECS Fargate, ECR, CloudWatch Logs, IAM `ecsTaskExecutionRole` |
 
-Exposición: el ALB recibe HTTP en :80 y reenvía al contenedor en :8080. No hay HTTPS (usa el DNS por defecto del ALB, sin certificado ACM) ni base de datos.
+Exposición: CloudFront termina TLS en :443 y reenvía por HTTP al ALB en :80, que a su vez llega al contenedor en :8080. Sin base de datos.
 
 ---
 
@@ -176,6 +177,7 @@ Desglose en [docs/costos.md](docs/costos.md).
 | IPv4 públicas (tarea + 2 nodos ALB) | 10.80 |
 | ECR (~200 MB) | 0.02 |
 | CloudWatch Logs (~1 GB) | 0.50 |
+| CloudFront (Always Free: 1 TB, 10 M peticiones) | 0.00 |
 | **Total** | **36.41** |
 
 Gasto real del mes según AWS Budgets: **$7.14**.
@@ -226,7 +228,7 @@ bottitos-spookython/
 │   ├── js/                    # engine.js, manta-config.js, sprites.js, audio.js
 │   └── assets/                # manta_routes.js (red vial) y sprites
 ├── scripts/                   # generate_all_routes.js (OSRM), generar_sprites.py (PIL)
-├── infra/                     # buildspec.yml, deploy-ecs.ps1, ecs-task-definition.json
+├── infra/                     # buildspec, deploy ECS y CloudFront, task definition
 └── docs/                      # Arquitectura, costos, diagramas y capturas de AWS
 ```
 
