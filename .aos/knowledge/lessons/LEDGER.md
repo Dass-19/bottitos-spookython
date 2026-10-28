@@ -7,7 +7,7 @@ Formato (Markdown, una fila por lección, más reciente arriba):
 
 | Fecha | Artefacto tocado | Evidencia (comando o salida) | Efecto |
 |---|---|---|---|
-| 2026-01-01 | `<artefacto>` | `<comando o salida>` | `<efecto>` |
+| 2026-10-27 | `backend/engine.py`, `backend/montecarlo.py`, `frontend/js/engine.js` | `python scripts/test_scales.py` -> `ALL_SEPARATION_TESTS_PASSED` & `node --check frontend/js/engine.js` (exit 0) | Separar la escala visual del mapa (`totalPop = agentCount`) de la escala censal real en Monte Carlo (`censusPop = 271145`) evita porcentajes `0.00%` en el HUD manteniendo rigor estadístico en `/montecarlo`. |
 
 ## Cómo se usa
 

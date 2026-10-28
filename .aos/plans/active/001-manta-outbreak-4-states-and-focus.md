@@ -1,67 +1,57 @@
 ---
 id: 202610270806
 type: plan
-status: active
+status: completed
 priority: high
-tags: [plan/feature]
+tags: [plan/feature, mantazero, montecarlo, fastapi]
 created: 2026-10-27
 ---
 
-# Plan: Feature — manta-outbreak-4-states-and-focus
+# Plan: Feature — MantaZero: Epidemic Command (Monorepo, 4 SEIR States, Combat & NumPy Monte Carlo)
 
-> Objetivo (Definition of Done): Implementar 4 estados de entidades (Humano, Mordido/Incubando, Infectado/Zombie, Inmune), escenario realista con recursos limitados (munición, antídotos), arranque desde cero con selección de epicentro y animación de mutación del Paciente Cero, menú contextual con clic derecho para enfocar con zoom animado, y parametrización funcional de los controles.
+> Objetivo (Definition of Done): Reestructurar el proyecto en `backend/`, `frontend/`, `infra/`, `docs/`; renombrar a **MantaZero: Epidemic Command**; implementar motor SEIR en FastAPI en contraste 1:1 con los agentes del mapa (reparto aleatorio de armados, 8 disparos por zombi, 3 escenarios de desastres naturales, inicio detenido en Día 0); y ejecutar simulación Monte Carlo en segundo plano con semilla NumPy sobre la población real de Manta (271,145 hab.) con dashboard en `/montecarlo`.
 
 ## Contexto y Archivos Afectados
-- Archivos modificados:
-  - `index.html`: HUD de 4 entidades, contadores de recursos limitados, panel de parametrización pre-brote, menú contextual y overlay cinemático de Paciente Cero.
-  - `css/arcade.css`: Estilos para menú contextual, overlay cinemático, retícula de rastreo, auras de mordido e inmune.
-  - `js/sprites.js`: Motores gráficos Chibi y Micro-sprites para Humano, Mordido, Infectado e Inmune, además de partículas de mutación y escudo inmune.
-  - `js/audio.js`: Síntesis de efectos de tos, rugido de transformación y deflexión inmune.
-  - `js/engine.js`: Lógica de simulación SEIR desde cero, cinemática de Paciente Cero, clic derecho "Enfocar", límites de munición y antídoto, y cálculo en vivo por parroquias.
-- DASS-AOS:
-  - Inicializado con `aos init antigravity`.
-  - `.aos/`, `.gitignore` y `GEMINI.md` configurados.
+- **Backend (`backend/`)**:
+  - `backend/presets.py`: Constantes (`TOTAL_POPULATION = 271145`, `ZOMBIE_MAX_HP = 8`) y los 3 escenarios (`A`: Tsunami 7.8, `B`: El Niño, `C`: Marea Roja).
+  - `backend/engine.py`: Motor SEIR principal en escala 1:1 con los agentes del mapa (`totalPop = agentCount`), síntesis de laboratorio y combate de 8 impactos por zombi.
+  - `backend/montecarlo.py`: Motor estocástico vectorizado con NumPy (`np.random.default_rng(seed)`) en hilo background sobre el censo real de Manta (`271,145`).
+  - `backend/main.py`: Endpoints FastAPI (`/api/*`), ruta `/montecarlo` y montaje estático de `frontend/`.
+  - `backend/requirements.txt`: Dependencias (`fastapi`, `uvicorn`, `pydantic`, `numpy`).
+- **Frontend (`frontend/`)**:
+  - `frontend/index.html`: Rebrand a `MantaZero: Epidemic Command`, HUD limpio sin puntos parpadeantes ni leyendas redundantes, selector `MAPA / SAT` junto al botón de reiniciar, paneles plegables (`#tactical-dock` con 1.ª pestaña `🎛️ PARÁMETROS`), control de personas armadas y semilla de Monte Carlo.
+  - `frontend/montecarlo.html`: Dashboard estadístico con promedios, rangos P5–P95 y gráficas Chart.js.
+  - `frontend/js/engine.js`: Renderizado 2D, reparto aleatorio Fisher-Yates de armados, barra `X/8` HP por zombi, sincronización con FastAPI y sondeo de Monte Carlo.
+  - `frontend/css/arcade.css`: Transiciones para paneles colapsables y chips del HUD.
+- **Infraestructura & Documentación**:
+  - `infra/.gitkeep` y `docs/.gitkeep`.
 
 ## Fases de Ejecución Atómica
 
-- [x] Fase 1: Discovery & requisitos
-  - Revertir commit no autorizado inmediatamente (`git reset HEAD~1`).
-  - Identificar repositorio DASS-AOS (`https://github.com/Dass-19/dass-aos`) e inicializarlo con `aos init antigravity`.
-  - Definir las 4 entidades: Humano, Mordido (incubando con temporizador y síntomas), Infectado (zombie activo), Inmune (resistente con deflexión).
-  - Formalizar recursos finitos (Munición de soldados, Cajas de antídoto).
-  - Diseñar el inicio desde cero con parametrización y cinemática del Paciente Cero.
-  - Diseñar menú contextual con clic derecho para "Enfocar" con animación de cámara suave.
-  - Gate: Configuración aprobada y documentada.
+- [x] Fase 1: Reestructuración Monorepo y Contratos HTTP
+  - Separar en `backend/`, `frontend/`, `infra/.gitkeep`, `docs/.gitkeep`.
+  - Declarar contrato OpenAPI en `.aos/contracts/http/simulation-api.yaml` incluyendo endpoints `/api/sim/*`, `/api/montecarlo/*` y `/montecarlo`.
+  - Gate: Raíz limpia y contrato HTTP actualizado.
 
-- [x] Fase 2: Diseño de Sprites y Recursos
-  - Crear renderizado Chibi y Micro-sprites para los 4 estados en `js/sprites.js`.
-  - Agregar efectos de sonido para tos, transformación y deflexión en `js/audio.js`.
-  - Diseñar overlay cinemático y menú contextual en `css/arcade.css`.
-  - Gate: Motores gráficos y estilos listos.
+- [x] Fase 2: UI/UX Táctica y Rebrand a MantaZero: Epidemic Command
+  - Renombrar título principal y cabeceras a `MantaZero: Epidemic Command`.
+  - Eliminar puntos brillantes (`animate-ping` / `animate-pulse`), barra `INTEL:`, tarjeta flotante `TARGET` y píldora de leyenda superior derecha.
+  - Mover selector `MAPA / SAT` a la barra inferior, a la izquierda del botón de reiniciar.
+  - Hacer plegables el dock derecho (con `🎛️ PARÁMETROS` como primera pestaña) y la barra inferior para que el mapa ocupe el 100% del espacio.
+  - Gate: Interfaz limpia y validada visualmente.
 
-- [x] Fase 3: Implementación del Motor de Simulación (js/engine.js & index.html)
-  - Control de inicio desde cero (`state.hasStarted = false`).
-  - Panel de parametrización interactivo con selección de epicentro en Manta.
-  - Cinemática en 3 fases de la transformación gradual del Paciente Cero.
-  - Interacción con clic derecho: menú contextual táctico con opción "Enfocar Sector" (`map.flyTo` suave a 17X).
-  - Lógica de combate y contagio:
-    * Soldados disparan y gastan munición finita; si se agota, huyen.
-    * Zombies muerden a humanos convirtiéndolos en mordidos con cuenta regresiva.
-    * Inmunes repelen mordeduras y no se infectan.
-    * Lanzamiento de antídoto limitado por existencias de cajas (recargables vía síntesis de laboratorio).
-  - Enlace dinámico de todas las variables, sliders, cerco vial y barras de parroquias en vivo.
-  - Gate: Sintaxis validada con `node --check`.
+- [x] Fase 3: Combate Táctico (8 Disparos por Zombi & Personas Armadas Aleatorias)
+  - Agregar parámetro `Personas con Armas` (`#init-armed-slider`) repartido aleatoriamente con barajado Fisher-Yates entre los agentes del mapa.
+  - Configurar resistencia de zombis en `8` impactos de bala (`hp: 8, maxHp: 8`) con barra de vida flotante `X/8`.
+  - Gate: Solo los agentes armados disparan y cada zombi cae al 8.º impacto.
 
-- [x] Fase 4: Verificación
-  - Pruebas sintácticas de archivos JS (`node --check`).
-  - Verificación de no realización de commits sin autorización explícita.
-  - Verificación de estado del harness con `aos status`.
-  - Gate: Código libre de errores de sintaxis y repositorio en estado limpio para revisión del usuario.
+- [x] Fase 4: Motor Monte Carlo en Segundo Plano (NumPy) y Separación de Escalas
+  - Implementar `MonteCarloRunner` en `backend/montecarlo.py` con `np.random.default_rng(seed)` corriendo en background sobre la población real de Manta (`271,145` hab.).
+  - Ajustar `backend/engine.py` y `frontend/js/engine.js` para que la simulación principal funcione 100% en contraste con los agentes del mapa (`totalPop = agentCount`).
+  - Construir dashboard `/montecarlo` (`frontend/montecarlo.html`) con KPIs, abanico P5–P95 / P25–P75, curva SEIR logarítmica, histograma y tabla de percentiles.
+  - Gate: Sintaxis JS verificada (`node --check frontend/js/engine.js`) y pruebas de integración FastAPI + Monte Carlo (`ALL_SEPARATION_TESTS_PASSED`).
 
 ## Registro de Decisiones (Discovery Trail)
-- **Decisión 1:** El commit previo fue retirado con `git reset HEAD~1`. No se realizarán commits sin orden expresa del usuario.
-- **Decisión 2:** DASS-AOS se inicializó con `aos init antigravity`, generando `.aos/`, `.gitignore` y `GEMINI.md` para ser versionados junto al proyecto.
-- **Decisión 3:** Se crearon 4 tipos de entidad bien diferenciados: Humano (sano/combate), Mordido (en proceso de incubación con indicador visual y temporizador), Infectado (zombie agresivo que contagia) e Inmune (protegido contra mordeduras, aporta a la síntesis de la cura).
-- **Decisión 4:** Los recursos son estrictamente limitados: munición que se consume con cada disparo y cajas de antídoto finitas que se reabastecen cuando el laboratorio llega al 100%.
-- **Decisión 5:** El inicio desde cero incluye una cinemática del Paciente Cero con retícula de satélite y transformación en 3 fases (Síntoma -> Incubación -> Mutación completa).
-- **Decisión 6:** El clic derecho abre un menú táctico con la opción "Enfocar Sector", que realiza un vuelo animado (`flyTo`) a zoom 17 para inspeccionar los micro-sprites y sus interacciones.
+- **Decisión 1:** No realizar commits automáticos sin orden expresa del usuario.
+- **Decisión 2:** La simulación principal en el mapa calcula sus métricas (`SANOS`, `MORDIDOS`, `ZOMBIS`, `CURADOS`) en proporción 1:1 con los agentes desplegados (`agentCount`), mientras que el Monte Carlo en segundo plano opera con los datos reales del censo de Manta (`271,145` habitantes).
+- **Decisión 3:** El backend FastAPI (`backend/engine.py` y `backend/montecarlo.py`) es la fuente de verdad de los cálculos SEIR y estocásticos; el frontend (`frontend/js/engine.js`) se encarga del renderizado espacial y sincroniza el estado vía REST.
