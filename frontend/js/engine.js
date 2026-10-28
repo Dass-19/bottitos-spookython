@@ -1,5 +1,5 @@
 // ==========================================================================
-// MANTA OUTBREAK // MAIN SIMULATION & COMBAT ENGINE (4 STATES + REAL RESOURCES)
+// MantaZero: Epidemic Command // MAIN SIMULATION & COMBAT ENGINE (4 STATES + REAL RESOURCES)
 // ==========================================================================
 
 (function initMetalSlugEngine() {
@@ -8,9 +8,45 @@
   const sfx = window.SFX;
   const rawRoutes = window.MANTA_STREET_ROUTES || {};
 
+  // Python Backend API Connector (FastAPI /api/*) & State Synchronization
+  async function syncBackend(endpoint, payload = null) {
+    try {
+      const opts = payload
+        ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+        : { method: 'GET' };
+      const res = await fetch(endpoint, opts);
+      if (res.ok) return await res.json();
+    } catch (_) {
+      // Fallback silencioso si se abre sin servidor activo
+    }
+    return null;
+  }
+
+  function applyBackendState(srvState) {
+    if (!srvState) return;
+    if (typeof srvState.totalPop === 'number') state.totalPop = srvState.totalPop;
+    if (typeof srvState.healthy === 'number') state.healthy = srvState.healthy;
+    if (typeof srvState.bitten === 'number') state.bitten = srvState.bitten;
+    if (typeof srvState.infected === 'number') state.infected = srvState.infected;
+    if (typeof srvState.immune === 'number') state.immune = srvState.immune;
+    if (typeof srvState.recovered === 'number') state.recovered = srvState.recovered;
+    if (typeof srvState.deaths === 'number') state.deaths = srvState.deaths;
+    if (typeof srvState.ammo === 'number') state.ammo = srvState.ammo;
+    if (typeof srvState.maxAmmo === 'number') state.maxAmmo = srvState.maxAmmo;
+    if (typeof srvState.cureCrates === 'number') state.cureCrates = srvState.cureCrates;
+    if (typeof srvState.cureProgress === 'number') state.cureProgress = srvState.cureProgress;
+    if (typeof srvState.score === 'number') state.score = srvState.score;
+    if (typeof srvState.day === 'number') state.day = srvState.day;
+    if (typeof srvState.hour === 'number') state.hour = srvState.hour;
+    if (typeof srvState.minute === 'number') state.minute = srvState.minute;
+    if (typeof srvState.r0 === 'number') state.r0 = srvState.r0;
+  }
+
   // Simulation Game State
   const state = {
-    hasStarted: true,
+    hasStarted: false,
+    armedCount: 20,
+    mcSeed: 42,
     isTransforming: false,
     isRunning: true,
     speed: 1,
@@ -29,12 +65,12 @@
     cureProgress: 0.0,
     cureEtaDays: 30,
     
-    // Census & SEIR Model
-    totalPop: 271145,
-    healthy: 249453,
+    // Agentes en el mapa y Modelo SEIR local (en contraste directo con los agentes activos)
+    totalPop: 95,
+    healthy: 87,
     bitten: 0,
     infected: 0,
-    immune: 21692,
+    immune: 8,
     recovered: 0,
     deaths: 0,
     r0: 3.82,
@@ -202,10 +238,9 @@
         className: 'manta-node-icon',
         html: `
           <div class="flex flex-col items-center cursor-pointer group" onclick="inspectLandmark('${key}'); SFX.alarm();">
-            <div class="px-2 py-0.5 rounded border-2 ${isEpicenter ? 'bg-red-950 border-red-500 text-red-300 shadow-[0_0_10px_#dc2626]' : 'bg-[#141e17] border-[#4b5e4e] text-amber-300 shadow-md'} font-heavy text-[8px] whitespace-nowrap flex items-center gap-1">
+            <div class="px-2 py-0.5 rounded border-2 ${isEpicenter ? 'bg-red-950 border-red-500 text-red-300' : 'bg-[#141e17] border-[#4b5e4e] text-amber-300 shadow-md'} font-heavy text-[8px] whitespace-nowrap flex items-center gap-1">
               <span>${isEpicenter ? '☠ ' : '★ '}${node.name}</span>
             </div>
-            <div class="w-2.5 h-2.5 rounded-full ${isEpicenter ? 'bg-red-600 animate-ping' : 'bg-amber-400'} mt-0.5 border border-black"></div>
           </div>
         `,
         iconSize: [110, 32],
@@ -314,6 +349,8 @@
     });
     if (nearestAgent) {
       nearestAgent.type = 'infected';
+      nearestAgent.hp = 8;
+      nearestAgent.maxHp = 8;
       nearestAgent.glitchTimer = 30;
       sfx.transformRoar();
       state.particles.push({
@@ -386,22 +423,25 @@
     const count = state.agentCount;
     const HERO_KEYS = ['marco', 'tarma', 'eri', 'fio', 'rebel', 'scientist', 'tarman'];
 
+    // Reparto aleatorio (Fisher-Yates) de las personas con armas
+    const order = Array.from({ length: count }, (_, k) => k);
+    for (let k = order.length - 1; k > 0; k--) {
+      const r = Math.floor(Math.random() * (k + 1));
+      [order[k], order[r]] = [order[r], order[k]];
+    }
+    const armedSet = new Set(order.slice(0, Math.min(state.armedCount, count)));
+
     for (let i = 0; i < count; i++) {
       const rKey = rKeys[Math.floor(Math.random() * rKeys.length)];
       const rd = routeData[rKey];
       const posMeters = Math.random() * rd.totalDist;
       const dir = Math.random() < 0.5 ? 1 : -1;
       
-      // Distribute the 4 SEIR characters immediately on the map:
-      // Sano (S), Mordido (E), Zombie (I), Exorcizado (R)
+      // Pre-outbreak state: only Sano (human) and natural Inmune (immune) walk the streets
       let agentType = 'human';
       let incubationTimer = 0;
-      if (i < 8) {
-        agentType = 'infected'; // Zombie (I)
-      } else if (i < 16) {
-        agentType = 'bitten';   // Mordido (E)
-        incubationTimer = (4 + Math.random() * 8) * 60;
-      } else if (i < 26) {
+      const immuneAgents = Math.round(count * state.immunityRate);
+      if (i < immuneAgents) {
         agentType = 'immune';   // Exorcizado / Inmune (R)
       } else {
         agentType = 'human';    // Sano (S)
@@ -435,19 +475,25 @@
         vomitCooldown: Math.floor(Math.random() * 20),
         isVomiting: false,
         cureTimer: 0,
+        hp: 8,
+        maxHp: 8,
+        armed: armedSet.has(i),
         isPatientZero: (i === 0)
       });
     }
 
-    // Calculate initial counts for 4 SEIR states
-    state.infected = 8;
-    state.bitten = 8;
-    const immCount = Math.round(state.totalPop * state.immunityRate);
+    // Calculate initial counts for pre-outbreak state (100% en contraste con los agentes del mapa)
+    state.totalPop = count;
+    state.infected = 0;
+    state.bitten = 0;
+    const immCount = Math.round(count * state.immunityRate);
     state.immune = immCount;
-    state.healthy = state.totalPop - immCount - state.infected - state.bitten;
+    state.healthy = count - immCount;
     state.recovered = 0;
     state.deaths = 0;
-    state.hasStarted = true;
+    state.hasStarted = false;
+    const agCountEl = document.getElementById('slug-agent-count');
+    if (agCountEl) agCountEl.innerText = String(count);
     updateHUD();
   }
   initAgents();
@@ -524,6 +570,8 @@
       if (prog) prog.style.width = "100%";
 
       targetAgent.type = 'infected';
+      targetAgent.hp = 8;
+      targetAgent.maxHp = 8;
       targetAgent.glitchTimer = 45;
       sfx.transformRoar();
 
@@ -578,6 +626,11 @@
     const agentsSlider = document.getElementById('init-agents-slider');
     if (agentsSlider) state.agentCount = parseInt(agentsSlider.value, 10);
 
+    const armedSlider = document.getElementById('init-armed-slider');
+    if (armedSlider) state.armedCount = Math.min(parseInt(armedSlider.value, 10), state.agentCount);
+    const seedInput = document.getElementById('init-mc-seed');
+    if (seedInput) state.mcSeed = parseInt(seedInput.value, 10) || 42;
+
     const immuneSlider = document.getElementById('init-immune-slider');
     if (immuneSlider) state.immunityRate = parseInt(immuneSlider.value, 10) / 100;
 
@@ -605,18 +658,103 @@
     // Re-init clean agent population with new settings
     initAgents();
 
-    // Hide pre-sim panel
+    // Collapse side dock so map takes 100% space during outbreak sequence
+    if (typeof window.toggleControlDock === 'function') {
+      window.toggleControlDock(true);
+    }
+
+    // Hide pre-sim panel if present
     const panel = document.getElementById('pre-sim-panel');
     if (panel) panel.style.display = 'none';
+
+    syncBackend('/api/sim/launch', {
+      epicenter: epVal,
+      agentCount: state.agentCount,
+      armedCount: state.armedCount,
+      mcSeed: state.mcSeed,
+      immunityRate: state.immunityRate,
+      incubationSeconds: state.incubationSeconds,
+      ammo: state.ammo,
+      cureCrates: state.cureCrates,
+      isCarnaval: state.isCarnaval,
+      isNight: state.isNight,
+      cercoVial: state.cercoVial
+    }).then(res => {
+      if (res && res.state) applyBackendState(res.state);
+    });
+
+    window.startMonteCarloPolling();
 
     // Start cinematic sequence
     window.startOutbreakSequence(epVal);
   };
 
+  window.triggerMapResize = function() {
+    if (map) {
+      map.invalidateSize();
+    }
+    resizeCanvas();
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+      resizeCanvas();
+    }, 310);
+  };
+
+  window.toggleControlDock = function(forceState) {
+    const dock = document.getElementById('tactical-dock');
+    const btnText = document.getElementById('btn-toggle-dock-text');
+    const btnIcon = document.getElementById('btn-toggle-dock-icon');
+    const mapDockBtn = document.getElementById('map-dock-expand-btn');
+    if (!dock) return;
+
+    let willCollapse;
+    if (typeof forceState === 'boolean') {
+      willCollapse = forceState;
+    } else {
+      willCollapse = !dock.classList.contains('dock-collapsed');
+    }
+
+    if (willCollapse) {
+      dock.classList.add('dock-collapsed');
+      if (btnText) btnText.innerText = 'CONTROLES & PARÁMETROS';
+      if (btnIcon) btnIcon.innerText = 'tune';
+      if (mapDockBtn) mapDockBtn.classList.remove('hidden');
+    } else {
+      dock.classList.remove('dock-collapsed');
+      if (btnText) btnText.innerText = 'PLEGAR PANELES';
+      if (btnIcon) btnIcon.innerText = 'close';
+      if (mapDockBtn) mapDockBtn.classList.add('hidden');
+    }
+    window.triggerMapResize();
+  };
+
+  window.toggleBottomControls = function() {
+    const bar = document.getElementById('bottom-control-dock');
+    const trigger = document.getElementById('bottom-bar-trigger');
+    if (!bar) return;
+
+    const isCollapsed = bar.classList.contains('bar-collapsed');
+    if (isCollapsed) {
+      bar.classList.remove('bar-collapsed');
+      if (trigger) trigger.classList.add('hidden');
+    } else {
+      bar.classList.add('bar-collapsed');
+      if (trigger) trigger.classList.remove('hidden');
+    }
+    window.triggerMapResize();
+  };
+
   window.togglePreSimPanel = function() {
     const panel = document.getElementById('pre-sim-panel');
     if (!panel) return;
-    panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
+    const isHidden = panel.classList.contains('hidden') || panel.style.display === 'none';
+    if (isHidden) {
+      panel.classList.remove('hidden');
+      panel.style.display = 'flex';
+    } else {
+      panel.classList.add('hidden');
+      panel.style.display = 'none';
+    }
   };
 
   // 5. ANIMATION & COMBAT LOOP (60 FPS)
@@ -714,6 +852,8 @@
         if (a.incubationTimer <= 0) {
           // Mutate into infected!
           a.type = 'infected';
+          a.hp = 8;
+          a.maxHp = 8;
           a.glitchTimer = 25;
           sfx.zombieBite();
 
@@ -779,7 +919,7 @@
             a.facing = (nearestZombie.screenX >= a.screenX) ? 1 : -1;
 
             if (a.shootCooldown <= 0) {
-              if (state.ammo > 0) {
+              if (a.armed && state.ammo > 0) {
                 // Shoot weapon & spend ammo
                 a.shootCooldown = 28;
                 a.isShooting = true;
@@ -814,6 +954,62 @@
                 });
 
                 sfx.gunshot();
+
+                // Apply bullet damage: Zombie dies in 8 gunshots
+                if (typeof nearestZombie.hp !== 'number') {
+                  nearestZombie.hp = 8;
+                  nearestZombie.maxHp = 8;
+                }
+                nearestZombie.hp -= 1;
+                syncBackend('/api/sim/combat-hit', { zombieId: nearestZombie.id });
+                nearestZombie.glitchTimer = 8;
+                nearestZombie.posMeters -= nearestZombie.dir * 0.6;
+
+                if (nearestZombie.hp <= 0) {
+                  for (let k = 0; k < 10; k++) {
+                    state.particles.push({
+                      type: 'blood_stream',
+                      x: nearestZombie.screenX,
+                      y: nearestZombie.screenY - 6,
+                      vx: (Math.random() - 0.5) * 4.5,
+                      vy: -1.5 - Math.random() * 2.5,
+                      size: 2.5 + Math.random() * 2.0,
+                      color: (k % 2 === 0) ? '#dc2626' : '#7f1d1d',
+                      life: 1.0,
+                      decay: 0.04
+                    });
+                  }
+                  state.particles.push({
+                    type: 'text',
+                    text: '💀 ¡ZOMBI ABATIDO!',
+                    x: nearestZombie.screenX,
+                    y: nearestZombie.screenY - 18,
+                    color: '#4ade80',
+                    life: 1.2,
+                    decay: 0.03
+                  });
+
+                  if (agentDoms[nearestZombie.id]) {
+                    agentDoms[nearestZombie.id].remove();
+                    delete agentDoms[nearestZombie.id];
+                  }
+                  const zIdx = state.agents.indexOf(nearestZombie);
+                  if (zIdx !== -1) {
+                    state.agents.splice(zIdx, 1);
+                    if (zIdx <= i) i--;
+                  }
+
+                  state.infected = Math.max(0, state.infected - 1);
+                  state.deaths += 1;
+                  state.score += 250;
+                  const scoreEl = document.getElementById('score-counter');
+                  if (scoreEl) scoreEl.innerText = String(state.score).padStart(6, '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                  const agCountEl = document.getElementById('slug-agent-count');
+                  if (agCountEl) agCountEl.innerText = String(state.agents.length);
+                  updateHUD();
+                  updateParishBars();
+                  updateContagionRadius();
+                }
               } else {
                 // Out of ammo: flee!
                 a.dir = (nearestZombie.screenX >= a.screenX) ? -1 : 1;
@@ -1000,6 +1196,28 @@
           ctx.restore();
         }
 
+        if (a.type === 'infected' && typeof a.hp === 'number' && a.hp < (a.maxHp || 8)) {
+          // Floating Zombie HP Bar (8 shots to kill)
+          const hpPct = Math.max(0, a.hp / (a.maxHp || 8));
+          ctx.save();
+          ctx.translate(Math.round(a.screenX), Math.round(a.screenY - 38));
+          ctx.fillStyle = '#0f172a';
+          ctx.strokeStyle = '#991b1b';
+          ctx.lineWidth = 1;
+          ctx.fillRect(-12, -4, 24, 5);
+          ctx.strokeRect(-12, -4, 24, 5);
+
+          const barW = Math.max(0, Math.min(22, Math.round(22 * hpPct)));
+          ctx.fillStyle = (hpPct > 0.4) ? '#ef4444' : '#f97316';
+          ctx.fillRect(-11, -3, barW, 3);
+
+          ctx.fillStyle = '#fca5a5';
+          ctx.font = 'bold 5px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${a.hp}/8`, 0, -5);
+          ctx.restore();
+        }
+
         if (a.cureTimer > 0) {
           ctx.save();
           ctx.translate(Math.round(a.screenX), Math.round(a.screenY - 42));
@@ -1026,56 +1244,68 @@
     if (state.isRunning && state.hasStarted && delta > (500 / state.speed)) {
       lastTick = now;
 
-      state.minute += 10;
-      if (state.minute >= 60) {
-        state.minute = 0;
-        state.hour += 1;
-        if (state.hour >= 24) {
-          state.hour = 0;
-          state.day += 1;
-          updateNewsTicker();
-          updateSEIRChart();
+      syncBackend('/api/sim/tick', {
+        infected: state.infected,
+        bitten: state.bitten,
+        immune: state.immune,
+        ammo: state.ammo
+      }).then(res => {
+        if (res && res.state) {
+          applyBackendState(res.state);
+          if (res.synthesizedCrate) {
+            sfx.cure();
+            state.particles.push({
+              type: 'text',
+              text: '+1 CAJA DE ANTÍDOTO SINTETIZADA',
+              x: canvas.width / 2,
+              y: 40,
+              color: '#facc15',
+              life: 1.5,
+              decay: 0.02
+            });
+          }
+          const bar = document.getElementById('slug-cure-bar');
+          const lbl = document.getElementById('slug-cure-text');
+          if (bar) bar.style.width = `${state.cureProgress}%`;
+          if (lbl) lbl.innerText = `${state.cureProgress}%`;
+          if (res.newDay) {
+            updateNewsTicker();
+            updateSEIRChart();
+          }
+          updateHUD();
+          updateParishBars();
+          updateContagionRadius();
+        } else {
+          // Offline fallback when opened via file:// without FastAPI server
+          state.minute += 10;
+          if (state.minute >= 60) {
+            state.minute = 0;
+            state.hour += 1;
+            if (state.hour >= 24) {
+              state.hour = 0;
+              state.day += 1;
+              updateNewsTicker();
+              updateSEIRChart();
+            }
+          }
+          if (state.cureProgress < 100) {
+            const boost = (state.distributionPriority === 'med' ? 0.12 : 0.07) * (1 + (state.immune / Math.max(1, state.totalPop)) * 5);
+            state.cureProgress = Math.min(100, +(state.cureProgress + boost * state.speed).toFixed(1));
+            if (state.cureProgress >= 100) {
+              state.cureCrates += 1;
+              sfx.cure();
+              state.cureProgress = 0.0;
+            }
+            const bar = document.getElementById('slug-cure-bar');
+            const lbl = document.getElementById('slug-cure-text');
+            if (bar) bar.style.width = `${state.cureProgress}%`;
+            if (lbl) lbl.innerText = `${state.cureProgress}%`;
+          }
+          updateHUD();
+          updateParishBars();
+          updateContagionRadius();
         }
-      }
-
-      // Cure synthesis in Lab
-      if (state.cureProgress < 100) {
-        // Immunes boost research speed (they provide antibodies)
-        const boost = (state.distributionPriority === 'med' ? 0.12 : 0.07) * (1 + (state.immune / state.totalPop) * 5);
-        state.cureProgress = Math.min(100, +(state.cureProgress + boost * state.speed).toFixed(1));
-        
-        if (state.cureProgress >= 100) {
-          // Produces a new supply crate!
-          state.cureCrates += 1;
-          sfx.cure();
-          state.particles.push({
-            type: 'text',
-            text: '+1 CAJA DE ANTÍDOTO SINTETIZADA',
-            x: canvas.width / 2,
-            y: 40,
-            color: '#facc15',
-            life: 1.5,
-            decay: 0.02
-          });
-          state.cureProgress = 0.0;
-        }
-
-        const bar = document.getElementById('slug-cure-bar');
-        const lbl = document.getElementById('slug-cure-text');
-        if (bar) bar.style.width = `${state.cureProgress}%`;
-        if (lbl) lbl.innerText = `${state.cureProgress}%`;
-      }
-
-      // Environmental propagation
-      if (state.infected > 0 && state.infected < state.totalPop) {
-        const factor = (state.isCarnaval ? 1.6 : 1.0) * (state.isNight ? 1.2 : 0.9) * (state.cercoVial ? 0.7 : 1.0);
-        const spreadDelta = Math.floor((Math.random() * 4 + 1) * state.speed * factor);
-        
-        state.healthy = Math.max(0, state.totalPop - state.immune - state.infected - state.bitten);
-        updateHUD();
-        updateParishBars();
-        updateContagionRadius();
-      }
+      });
     }
 
     updateAndRender();
@@ -1084,8 +1314,25 @@
 
   requestAnimationFrame(simLoop);
 
-  // 7. TELEMETRY & HUD UPDATES
+  // 7. TELEMETRY & HUD UPDATES (100% EN CONTRASTE CON LOS AGENTES DEL MAPA)
   function updateHUD() {
+    if (state.agents && state.agents.length > 0) {
+      let h = 0, b = 0, inf = 0, imm = 0;
+      for (let k = 0; k < state.agents.length; k++) {
+        const t = state.agents[k].type;
+        if (t === 'infected') inf++;
+        else if (t === 'bitten') b++;
+        else if (t === 'immune') imm++;
+        else h++;
+      }
+      state.healthy = h;
+      state.bitten = b;
+      state.infected = inf;
+      state.immune = imm;
+      state.totalPop = state.agents.length;
+    }
+
+    const denom = Math.max(1, state.totalPop);
     const hEl = document.getElementById('metric-healthy');
     const hPct = document.getElementById('metric-healthy-pct');
     const bEl = document.getElementById('metric-bitten');
@@ -1094,18 +1341,21 @@
     const iPct = document.getElementById('metric-infected-pct');
     const mEl = document.getElementById('metric-immune');
     const mPct = document.getElementById('metric-immune-pct');
+    const agCountEl = document.getElementById('slug-agent-count');
 
-    if (hEl) hEl.innerText = state.healthy.toLocaleString('es-EC');
-    if (hPct) hPct.innerText = `${((state.healthy / state.totalPop) * 100).toFixed(1)}%`;
+    if (agCountEl) agCountEl.innerText = String(state.totalPop);
+
+    if (hEl) hEl.innerText = String(state.healthy);
+    if (hPct) hPct.innerText = `${((state.healthy / denom) * 100).toFixed(1)}%`;
 
     if (bEl) bEl.innerText = String(state.bitten);
-    if (bPct) bPct.innerText = `${((state.bitten / state.totalPop) * 100).toFixed(2)}%`;
+    if (bPct) bPct.innerText = `${((state.bitten / denom) * 100).toFixed(1)}%`;
 
     if (iEl) iEl.innerText = String(state.infected);
-    if (iPct) iPct.innerText = `${((state.infected / state.totalPop) * 100).toFixed(2)}%`;
+    if (iPct) iPct.innerText = `${((state.infected / denom) * 100).toFixed(1)}%`;
 
-    if (mEl) mEl.innerText = state.immune.toLocaleString('es-EC');
-    if (mPct) mPct.innerText = `${((state.immune / state.totalPop) * 100).toFixed(1)}%`;
+    if (mEl) mEl.innerText = String(state.immune);
+    if (mPct) mPct.innerText = `${((state.immune / denom) * 100).toFixed(1)}%`;
 
     updateResourceTelemetry();
   }
@@ -1241,9 +1491,10 @@
       markerTxt.innerText = `DÍA ${state.day}`;
     }
 
-    // Dynamic curve deformation
-    const infPct = Math.min(1.0, state.infected / 5000);
-    const bitPct = Math.min(1.0, state.bitten / 500);
+    // Dynamic curve deformation scaled to map agents
+    const denom = Math.max(1, state.totalPop);
+    const infPct = Math.min(1.0, state.infected / denom);
+    const bitPct = Math.min(1.0, state.bitten / denom);
 
     const cS = document.getElementById('curve-susceptible');
     const cB = document.getElementById('curve-bitten');
@@ -1314,15 +1565,18 @@
   window.toggleSimPlay = function() {
     state.isRunning = !state.isRunning;
     const btnText = document.getElementById('slug-play-text');
+    const floatBtnText = document.getElementById('floating-play-text');
     const statusText = document.getElementById('slug-sim-status');
     if (state.isRunning) {
       if (btnText) btnText.innerText = '⏸️ PAUSE';
+      if (floatBtnText) floatBtnText.innerText = '⏸️ PAUSE';
       if (statusText) {
         statusText.innerText = state.hasStarted ? 'BROTE ACTIVO' : 'PRE-BROTE (DÍA 0)';
         statusText.className = state.hasStarted ? 'text-red-500' : 'text-emerald-400';
       }
     } else {
       if (btnText) btnText.innerText = '▶️ PLAY';
+      if (floatBtnText) floatBtnText.innerText = '▶️ PLAY';
       if (statusText) {
         statusText.innerText = 'PAUSADO';
         statusText.className = 'text-yellow-400 pulse-alert';
@@ -1405,43 +1659,154 @@
     inspectLandmark(epKey);
   };
 
+  const DISASTER_PRESETS = {
+    A: {
+      epicenter: 'Tarqui',
+      agents: 140,
+      armed: 30,
+      immunityPct: 5,
+      incubationSec: 5,
+      ammo: 400,
+      crates: 1,
+      isNight: false,
+      isCarnaval: true,
+      cercoVial: false,
+      r0: 4.85,
+      badge: 'EXTREMO',
+      tint: 'rgba(6, 78, 115, 0.22)' // Inundación Tsunami Costero
+    },
+    B: {
+      epicenter: 'Murcielago',
+      agents: 95,
+      armed: 25,
+      immunityPct: 10,
+      incubationSec: 9,
+      ammo: 800,
+      crates: 3,
+      isNight: true,
+      isCarnaval: false,
+      cercoVial: true,
+      r0: 2.35,
+      badge: 'TORMENTA',
+      tint: 'rgba(8, 12, 38, 0.48)' // Supertormenta El Niño & Apagón
+    },
+    C: {
+      epicenter: 'PuertoManta',
+      agents: 60,
+      armed: 25,
+      immunityPct: 16,
+      incubationSec: 15,
+      ammo: 1500,
+      crates: 6,
+      isNight: false,
+      isCarnaval: false,
+      cercoVial: true,
+      r0: 1.15,
+      badge: 'CONTENCIÓN',
+      tint: 'rgba(120, 28, 40, 0.18)' // Ciclón & Marea Roja Bio-Tóxica
+    }
+  };
+
   window.switchScenario = function(scen) {
+    syncBackend('/api/sim/scenario', { scenario: scen });
+    const preset = DISASTER_PRESETS[scen] || DISASTER_PRESETS.A;
     state.currentScenario = scen;
+
+    // 1. Update Header Pills
     const t1 = document.getElementById('slug-tab-1');
     const t2 = document.getElementById('slug-tab-2');
     const t3 = document.getElementById('slug-tab-3');
+    if (t1) t1.className = (scen === 'A')
+      ? "px-2 py-0.5 rounded text-[9px] font-heavy text-red-300 bg-red-950/80 border border-red-500 transition-all cursor-pointer"
+      : "px-2 py-0.5 rounded text-[9px] font-heavy text-slate-400 hover:text-red-300 transition-all cursor-pointer";
+    if (t2) t2.className = (scen === 'B')
+      ? "px-2 py-0.5 rounded text-[9px] font-heavy text-cyan-300 bg-cyan-950/80 border border-cyan-500 transition-all cursor-pointer"
+      : "px-2 py-0.5 rounded text-[9px] font-heavy text-slate-400 hover:text-cyan-300 transition-all cursor-pointer";
+    if (t3) t3.className = (scen === 'C')
+      ? "px-2 py-0.5 rounded text-[9px] font-heavy text-emerald-300 bg-emerald-950/80 border border-emerald-500 transition-all cursor-pointer"
+      : "px-2 py-0.5 rounded text-[9px] font-heavy text-slate-400 hover:text-emerald-300 transition-all cursor-pointer";
+
+    // 2. Highlight Preset Cards in Parameters Tab
+    const cA = document.getElementById('preset-card-A');
+    const cB = document.getElementById('preset-card-B');
+    const cC = document.getElementById('preset-card-C');
+    if (cA) cA.className = (scen === 'A')
+      ? "p-2 rounded border-2 border-red-500 bg-red-950/50 text-left transition-all cursor-pointer flex items-start justify-between gap-2 shadow-lg"
+      : "p-2 rounded border border-slate-700 bg-[#111820] hover:border-red-500/60 text-left transition-all cursor-pointer flex items-start justify-between gap-2";
+    if (cB) cB.className = (scen === 'B')
+      ? "p-2 rounded border-2 border-cyan-400 bg-cyan-950/50 text-left transition-all cursor-pointer flex items-start justify-between gap-2 shadow-lg"
+      : "p-2 rounded border border-slate-700 bg-[#111820] hover:border-cyan-400/60 text-left transition-all cursor-pointer flex items-start justify-between gap-2";
+    if (cC) cC.className = (scen === 'C')
+      ? "p-2 rounded border-2 border-emerald-400 bg-emerald-950/50 text-left transition-all cursor-pointer flex items-start justify-between gap-2 shadow-lg"
+      : "p-2 rounded border border-slate-700 bg-[#111820] hover:border-emerald-400/60 text-left transition-all cursor-pointer flex items-start justify-between gap-2";
+
+    // 3. Apply Preset Values to DOM Inputs & State
+    state.activeEpicenter = preset.epicenter;
+    const epSelect = document.getElementById('init-epicenter-select');
+    if (epSelect) epSelect.value = preset.epicenter;
+
+    state.agentCount = preset.agents;
+    const agSlider = document.getElementById('init-agents-slider');
+    const agVal = document.getElementById('init-agents-val');
+    if (agSlider) agSlider.value = String(preset.agents);
+    if (agVal) agVal.innerText = `${preset.agents} TROPAS`;
+
+    state.armedCount = preset.armed;
+    const armSlider = document.getElementById('init-armed-slider');
+    const armVal = document.getElementById('init-armed-val');
+    if (armSlider) armSlider.value = String(preset.armed);
+    if (armVal) armVal.innerText = `${preset.armed} ARMADOS`;
+
+    state.immunityRate = preset.immunityPct / 100;
+    const imSlider = document.getElementById('init-immune-slider');
+    const imVal = document.getElementById('init-immune-val');
+    if (imSlider) imSlider.value = String(preset.immunityPct);
+    if (imVal) imVal.innerText = `${preset.immunityPct}% INMUNES`;
+
+    state.incubationSeconds = preset.incubationSec;
+    const incSlider = document.getElementById('init-incub-slider');
+    const incVal = document.getElementById('live-incub-text');
+    if (incSlider) incSlider.value = String(preset.incubationSec);
+    if (incVal) incVal.innerText = `${preset.incubationSec}s`;
+
+    state.ammo = preset.ammo;
+    state.maxAmmo = preset.ammo;
+    const ammoSel = document.getElementById('init-ammo-select');
+    if (ammoSel) ammoSel.value = String(preset.ammo);
+
+    state.cureCrates = preset.crates;
+    const crateSel = document.getElementById('init-crates-select');
+    if (crateSel) crateSel.value = String(preset.crates);
+
+    // Sync Environment Switches (Night, Carnaval, Cerco Vial)
+    if (state.isNight !== preset.isNight) window.toggleNightCycle();
+    const nightChk = document.getElementById('init-night-check');
+    if (nightChk) nightChk.checked = preset.isNight;
+
+    if (state.isCarnaval !== preset.isCarnaval) window.toggleCarnaval();
+    const carnChk = document.getElementById('init-carnaval-check');
+    if (carnChk) carnChk.checked = preset.isCarnaval;
+
+    if (state.cercoVial !== preset.cercoVial) window.toggleCercoVial();
+    const cercoChk = document.getElementById('init-cerco-check');
+    if (cercoChk) cercoChk.checked = preset.cercoVial;
+
+    const ambient = document.getElementById('ambient-tint-layer');
+    if (ambient) ambient.style.backgroundColor = preset.tint;
+
+    state.r0 = preset.r0;
     const r0El = document.getElementById('metric-r0');
     const r0Badge = document.getElementById('metric-r0-badge');
-
-    [t1, t2, t3].forEach(t => {
-      if (t) t.className = "p-1.5 bg-[#121914] border border-slate-700 text-left rounded hover:border-slate-500 transition-all flex flex-col";
-    });
-
-    if (scen === 'A') {
-      if (t1) t1.className = "p-1.5 bg-[#201015] border-2 border-red-600 text-left rounded shadow-md flex flex-col";
-      state.isCarnaval = true;
-      state.cercoVial = false;
-      state.r0 = 4.8;
-      if (r0Badge) r0Badge.innerText = "EXTREMO";
-    } else if (scen === 'B') {
-      if (t2) t2.className = "p-1.5 bg-[#201a08] border-2 border-amber-500 text-left rounded shadow-md flex flex-col";
-      state.isCarnaval = false;
-      state.cercoVial = true;
-      state.r0 = 2.1;
-      if (r0Badge) r0Badge.innerText = "MODERADO";
-    } else if (scen === 'C') {
-      if (t3) t3.className = "p-1.5 bg-[#0e1f14] border-2 border-emerald-500 text-left rounded shadow-md flex flex-col";
-      state.isCarnaval = false;
-      state.cercoVial = true;
-      state.cureProgress = 78.5;
-      state.r0 = 0.72;
-      const bar = document.getElementById('slug-cure-bar');
-      const lbl = document.getElementById('slug-cure-text');
-      if (bar) bar.style.width = '78.5%';
-      if (lbl) lbl.innerText = '78.5%';
-      if (r0Badge) r0Badge.innerText = "CONTENIDO";
-    }
     if (r0El) r0El.innerText = state.r0.toFixed(2);
+    if (r0Badge) r0Badge.innerText = preset.badge;
+
+    inspectLandmark(preset.epicenter);
+
+    if (!state.hasStarted) {
+      initAgents();
+    } else {
+      updateHUD();
+    }
   };
 
   window.inspectLandmark = function(key) {
@@ -1504,7 +1869,7 @@
           state.agents.forEach(a => {
             const distKm = Math.hypot(a.lat - target.lat, a.lng - target.lng) * 111;
             if ((a.type === 'infected' || a.type === 'bitten') && distKm < 1.4) {
-              a.type = 'human';
+              a.type = 'immune';
               a.glitchTimer = 20;
               a.cureTimer = 40;
               a.incubationTimer = 0;
@@ -1528,11 +1893,12 @@
 
           if (healed > 0) sfx.powSalute();
 
-          state.infected = Math.max(0, state.infected - healed * 20);
-          state.bitten = Math.max(0, state.bitten - healed * 5);
-          state.recovered += (healed * 20);
-          state.healthy += (healed * 20);
+          state.recovered += healed;
           state.score += 800;
+          syncBackend('/api/sim/airdrop', { healedCount: healed }).then(res => {
+            if (res && res.state) applyBackendState(res.state);
+            updateHUD();
+          });
           updateHUD();
           const scoreEl = document.getElementById('score-counter');
           if (scoreEl) scoreEl.innerText = String(state.score).padStart(6, '0');
@@ -1687,7 +2053,41 @@
     }, 600);
   };
 
+  // Monte Carlo en segundo plano: sondeo de progreso y acceso al dashboard
+  let mcTimer = null;
+  window.startMonteCarloPolling = function() {
+    const btn = document.getElementById('btn-mc');
+    const txt = document.getElementById('btn-mc-text');
+    if (btn) { btn.dataset.ready = '0'; btn.classList.remove('hidden'); }
+    if (mcTimer) clearInterval(mcTimer);
+    mcTimer = setInterval(async () => {
+      const st = await syncBackend('/api/montecarlo/status');
+      if (!st) return;
+      if (st.state === 'running') {
+        if (txt) txt.innerText = `MONTE CARLO ${Math.round(st.progress * 100)}%`;
+      } else if (st.state === 'done') {
+        clearInterval(mcTimer);
+        if (btn) btn.dataset.ready = '1';
+        if (txt) txt.innerText = 'VER DASHBOARD MC';
+        if (btn) btn.classList.add('animate-pulse');
+        sfx.cure();
+      } else if (st.state === 'error') {
+        clearInterval(mcTimer);
+        if (txt) txt.innerText = 'MC ERROR';
+      }
+    }, 1500);
+  };
+
+  window.openMonteCarlo = function() {
+    const btn = document.getElementById('btn-mc');
+    if (btn && btn.dataset.ready === '1') window.open('/montecarlo', '_blank');
+  };
+
   window.resetSimulation = function() {
+    syncBackend('/api/sim/reset', {}).then(res => {
+      if (res && res.state) applyBackendState(res.state);
+      updateHUD();
+    });
     state.hasStarted = false;
     state.isTransforming = false;
     state.day = 0;
@@ -1718,9 +2118,13 @@
       simStatus.className = 'text-emerald-400';
     }
 
-    // Open Pre-Sim Panel
-    const panel = document.getElementById('pre-sim-panel');
-    if (panel) panel.style.display = 'flex';
+    // Open side dock on the first tab (Parámetros)
+    if (typeof window.toggleControlDock === 'function') {
+      window.toggleControlDock(false);
+    }
+    if (typeof window.switchSidebarTab === 'function') {
+      window.switchSidebarTab('control');
+    }
   };
 
 })();

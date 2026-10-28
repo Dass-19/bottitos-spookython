@@ -1,0 +1,80 @@
+openapi: 3.0.3
+info:
+  title: MantaZero SEIR Simulation Engine API
+  version: 1.0.0
+  description: Motor backend para simulación epidemiológica SEIR, combate táctico (8 disparos por zombi) y escenarios de desastres naturales en Manta.
+paths:
+  /api/health:
+    get:
+      summary: Estado de salud del motor backend
+      responses:
+        '200':
+          description: OK
+  /api/presets:
+    get:
+      summary: Obtiene los 3 escenarios predeterminados (Zombies + Desastres Naturales/Meteorológicos)
+      responses:
+        '200':
+          description: Lista de escenarios A, B y C
+  /api/state:
+    get:
+      summary: Obtiene el estado actual de la simulación SEIR
+      responses:
+        '200':
+          description: Estado SEIR, recursos y parroquias
+  /api/sim/reset:
+    post:
+      summary: Reinicia la simulación a estado Pre-Brote (Día 0, 0 zombis)
+      responses:
+        '200':
+          description: Estado reiniciado
+  /api/sim/scenario:
+    post:
+      summary: Aplica uno de los 3 escenarios predeterminados (A, B, C)
+      responses:
+        '200':
+          description: Escenario aplicado
+  /api/sim/launch:
+    post:
+      summary: Inicia el brote desde cero con los parámetros configurados
+      responses:
+        '200':
+          description: Simulación iniciada
+  /api/sim/tick:
+    post:
+      summary: Avanza un tick del reloj epidemiológico SEIR y síntesis de laboratorio
+      responses:
+        '200':
+          description: Estado actualizado tras el tick
+  /api/sim/combat-hit:
+    post:
+      summary: Registra disparo a un zombi (muere al 8.º balazo)
+      responses:
+        '200':
+          description: Resultado del impacto (HP restante o baja confirmada)
+  /api/sim/airdrop:
+    post:
+      summary: Despliega una caja de antídoto sobre el sector objetivo
+      responses:
+        '200':
+          description: Resultado del lanzamiento de cura
+  /api/montecarlo/status:
+    get:
+      summary: Estado y porcentaje de progreso de la simulación Monte Carlo en segundo plano (NumPy)
+      responses:
+        '200':
+          description: Progreso actual
+  /api/montecarlo/results:
+    get:
+      summary: Resultados estadísticos agregados de Monte Carlo (promedios, rangos P5-P95, series SEIR e histograma sobre población real de Manta 271,145)
+      responses:
+        '200':
+          description: Resultados completos
+        '202':
+          description: En ejecución
+  /montecarlo:
+    get:
+      summary: Dashboard HTML de resultados de Monte Carlo
+      responses:
+        '200':
+          description: Dashboard HTML

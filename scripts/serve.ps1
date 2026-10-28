@@ -34,7 +34,7 @@ $mimeTypes = @{
     ".ttf"   = "font/ttf"
 }
 
-$root = (Get-Location).Path
+$root = Join-Path (Get-Location).Path "frontend"
 
 while ($listener.IsListening) {
     try {

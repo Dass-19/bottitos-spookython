@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>MantaZero: Epidemic Command</title>
+
+  <!-- Google Fonts: Black Ops One, Chakra Petch, JetBrains Mono, Russo One -->
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700;800&family=Russo+One&display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+
+  <!-- Leaflet.js (OpenStreetMap) CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Tailwind CSS CDN & Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind-config.js"></script>
+
+  <!-- Arcade & Tactical Stylesheet -->
+  <link rel="stylesheet" href="css/arcade.css?v=20261027_fixed_engine" />
+
+  <!-- Modular Scripts -->
+  <script src="assets/manta_routes.js?v=20261027_fixed_engine"></script>
+  <script src="js/audio.js?v=20261027_fixed_engine"></script>
+  <script src="js/manta-config.js?v=20261027_fixed_engine"></script>
+  <script src="js/sprites.js?v=20261027_fixed_engine"></script>
+</head>
+
+<body
+  class="bg-[#080c10] text-slate-100 font-tactical text-xs select-none h-screen flex flex-col p-1.5 sm:p-2 overflow-hidden">
+
+  <!-- 1. STREAMLINED ARCADE COMMAND HEADER (COMPACT & HARMONIOUS) -->
+  <!-- 1. STREAMLINED ARCADE COMMAND HEADER (INTUITIVE & ULTRA-READABLE) -->
+  <!-- 1. STREAMLINED ARCADE COMMAND HEADER (INTUITIVE & ULTRA-READABLE) -->
+  <header
+    class="glass-panel rounded-lg px-2.5 py-1.5 flex flex-col gap-1.5 shrink-0 border border-slate-700/60 shadow-lg">
+    <div class="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+
+      <!-- Left: Title, Scenarios & Key Navigation -->
+      <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center gap-1.5">
+          <h1 class="arcade-title text-base sm:text-lg tracking-wider">
+            MantaZero: Epidemic Command
+          </h1>
+        </div>
+
+        <!-- Mission Scenario Selector Pills -->
+        <div class="hidden 2xl:flex items-center gap-1 bg-black/60 p-0.5 rounded-md border border-slate-800">
+          <button
+            class="px-2 py-0.5 rounded text-[9px] font-heavy text-red-400 bg-red-950/60 border border-red-600/50 transition-all cursor-pointer"
+            id="slug-tab-1" onclick="switchScenario('A'); SFX.button();"
+            title="Escenario 1: Sismo 7.8 + Tsunami Costero + Brote Zombie">
+            🌊 TSUNAMI 7.8
+          </button>
+          <button
+            class="px-2 py-0.5 rounded text-[9px] font-heavy text-slate-400 hover:text-cyan-300 transition-all cursor-pointer"
+            id="slug-tab-2" onclick="switchScenario('B'); SFX.button();"
+            title="Escenario 2: Supertormenta El Niño + Apagón Nocturno + Zombies">
+            ⛈️ EL NIÑO
+          </button>
+          <button
+            class="px-2 py-0.5 rounded text-[9px] font-heavy text-slate-400 hover:text-emerald-300 transition-all cursor-pointer"
+            id="slug-tab-3" onclick="switchScenario('C'); SFX.button();"
+            title="Escenario 3: Ciclón Costero + Marea Roja Bio-Tóxica">
+            ☣️ MAREA ROJA
+          </button>
+        </div>
+
+        <!-- SEIR Roster Showcase -->
+        <button
+          class="btn-arcade-gold px-2 py-1 rounded text-[9px] font-heavy flex items-center gap-1 cursor-pointer shadow-md"
+          onclick="openMetalSlugShowcase(); SFX.button();" title="Ver Enciclopedia de Personajes y los 4 Estados SEIR">
+          <span class="material-symbols-outlined text-xs">group</span>
+          <span class="hidden md:inline">ROSTER SEIR</span>
+        </button>
+
+        <!-- Focus Camera Button -->
+        <button
+          class="btn-arcade-green px-2 py-1 rounded text-[9px] font-heavy flex items-center gap-1 cursor-pointer shadow-md"
+          onclick="zoomToCombat(); SFX.button();" title="Enfocar cámara directamente a los personajes en el mapa a 17X">
+          <span class="material-symbols-outlined text-xs">center_focus_strong</span>
+          <span class="hidden md:inline">ENFOCAR (17X)</span>
+        </button>
+      </div>
+
+      <!-- Center: 5 CRITICAL & INTUITIVE INDICATORS (PROMINENT & HIGH-CONTRAST) -->
+      <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-0.5" id="main-intuitive-telemetry">
+
+        <!-- 1. SANOS (Verde Esmeralda) -->
+        <div class="hud-chip bg-emerald-950/60 border border-emerald-500/50 text-emerald-300"
+          title="Agentes sanos en el mapa">
+          <div class="flex flex-col leading-none">
+            <span class="text-[8px] font-heavy tracking-wider text-emerald-400/90 uppercase">SANOS</span>
+            <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-white">
+              <span id="metric-healthy">87</span>
+              <span class="text-[9px] text-emerald-300 font-semibold" id="metric-healthy-pct">91.6%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. MORDIDOS / INCUBANDO (Ámbar) -->
+        <div class="hud-chip bg-amber-950/60 border border-amber-500/50 text-amber-300"
+          title="Agentes mordidos incubando la mutación zombie">
+          <div class="flex flex-col leading-none">
+            <span class="text-[8px] font-heavy tracking-wider text-amber-400/90 uppercase">MORDIDOS</span>
+            <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-amber-200">
+              <span id="metric-bitten">0</span>
+              <span class="text-[9px] text-amber-400/80 font-semibold" id="metric-bitten-pct">0.0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. ZOMBIS (Rojo Biohazard) -->
+        <div class="hud-chip bg-red-950/70 border border-red-500/70 text-red-300"
+          title="Agentes infectados activos en el mapa">
+          <div class="flex flex-col leading-none">
+            <span class="text-[8px] font-heavy tracking-wider text-red-400 uppercase">ZOMBIS</span>
+            <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-red-100">
+              <span id="metric-infected" class="pulse-alert">0</span>
+              <span class="text-[9px] text-red-400 font-semibold" id="metric-infected-pct">0.0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. CURADOS / RECUPERADOS (Oro) -->
+        <div class="hud-chip bg-yellow-950/60 border border-yellow-500/50 text-yellow-300"
+          title="Agentes inmunizados o curados con el antídoto en el mapa">
+          <div class="flex flex-col leading-none">
+            <span class="text-[8px] font-heavy tracking-wider text-yellow-400/90 uppercase">CURADOS</span>
+            <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-yellow-100">
+              <span id="metric-immune">8</span>
+              <span class="text-[9px] text-yellow-300/80 font-semibold" id="metric-immune-pct">8.4%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. CAJAS DE ANTÍDOTO DISPONIBLES (Cyan / Airdrop) -->
+        <button
+          class="hud-chip bg-cyan-950/60 border border-cyan-500/50 text-cyan-300 hover:border-cyan-400 hover:bg-cyan-900/60 cursor-pointer shadow-md"
+          id="btn-main-airdrop" onclick="deployCureAirdrop();"
+          title="¡Clic para lanzar caja de antídoto con paracaídas sobre Manta!">
+          <span class="material-symbols-outlined text-cyan-400 text-sm sm:text-base shrink-0">paragliding</span>
+          <div class="flex flex-col leading-none text-left">
+            <span class="text-[8px] font-heavy tracking-wider text-cyan-400/90 uppercase">ANTÍDOTOS</span>
+            <div class="flex items-baseline gap-1 font-mono font-extrabold text-xs sm:text-sm text-cyan-100">
+              <span id="metric-cure-crates">03</span>
+              <span class="text-[8px] text-cyan-400 font-bold uppercase">CAJAS</span>
+              <span class="hidden" id="btn-crate-count">3</span>
+            </div>
+          </div>
+        </button>
+
+      </div>
+
+      <!-- Right: Utility Controls & ONLY HEADER BUTTON FOR CONTROLS & PARAMETERS -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- SFX Mute Button -->
+        <button
+          class="p-1 rounded bg-black/60 border border-slate-800 text-slate-300 hover:text-emerald-400 cursor-pointer"
+          id="btn-sfx-slug" onclick="SFX.toggleMute()" title="Audio Neo-Geo">
+          <span class="material-symbols-outlined text-sm">volume_up</span>
+        </button>
+
+        <!-- MONTE CARLO (background) -> dashboard -->
+        <button id="btn-mc" data-ready="0" onclick="openMonteCarlo(); SFX.button();"
+          class="hidden btn-arcade-green px-2.5 py-1 rounded text-[9px] font-heavy flex items-center gap-1 cursor-pointer shadow-md"
+          title="Simulación Monte Carlo (NumPy) corriendo en segundo plano; al terminar abre el dashboard">
+          <span class="material-symbols-outlined text-xs">monitoring</span>
+          <span id="btn-mc-text">MONTE CARLO 0%</span>
+        </button>
+
+        <!-- SINGLE HEADER BUTTON FOR CONTROLS & PARAMETERS -->
+        <button id="btn-toggle-dock" onclick="toggleControlDock(); SFX.button();"
+          class="btn-arcade-gold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-[9px] sm:text-[10px] font-heavy flex items-center gap-1.5 shadow-lg cursor-pointer transition-all hover:scale-105"
+          title="Plegar o desplegar el panel de controles y parámetros">
+          <span class="material-symbols-outlined text-xs sm:text-sm" id="btn-toggle-dock-icon">tune</span>
+          <span id="btn-toggle-dock-text">CONTROLES &amp; PARÁMETROS</span>
+        </button>
+
+        <!-- Hidden DOM elements required by engine.js -->
+        <div class="hidden" id="pre-sim-panel">
+          <span id="metric-ammo">800</span>
+          <span id="metric-ammo-status">BALAS</span>
+          <span id="metric-r0">3.82</span>
+          <span id="metric-r0-badge">PELIGRO</span>
+          <span id="score-counter">000,000</span>
+          <span id="credit-token-badge">04</span>
+          <span id="slug-news-ticker"></span>
+          <span id="target-title"></span>
+          <span id="target-status-badge"></span>
+          <span id="target-details"></span>
+          <select id="slug-select-epicenter">
+            <option value="Tarqui">Tarqui</option>
+          </select>
+          <input type="range" id="live-incub-slider" value="8" />
+        </div>
+      </div>
+    </div>
+
+  </header>
+
+  <!-- 2. MAIN WORKSPACE: EXPANDED MAP (FULL SPACE) + COLLAPSIBLE TACTICAL DOCK -->
+  <main class="flex-1 min-h-0 flex relative mt-1.5 gap-1.5 sm:gap-2 overflow-hidden w-full">
+
+    <!-- LEFT/CENTER: 2D MAP RADAR (Takes 100% space when dock is collapsed!) -->
+    <div id="map-workspace"
+      class="flex-1 h-full min-h-0 flex flex-col glass-panel rounded-lg overflow-hidden border border-slate-700/60 relative transition-all duration-300">
+
+      <!-- Sleek Radar Top Bar -->
+      <div class="h-7 bg-[#10171e]/90 px-3 border-b border-slate-800 flex items-center justify-between z-30 shrink-0">
+        <div class="flex items-center gap-2 font-heavy text-[10px] text-slate-300">
+          <span class="text-cyan-400 font-mono flex items-center gap-1.5">
+            RADAR TÁCTICO MANTA
+          </span>
+          <span class="text-slate-600">|</span>
+          <span class="text-slate-400 text-[9px] font-mono">LAT -0.95° LON -80.72°</span>
+        </div>
+        <div class="flex items-center gap-3 font-mono text-[10px]">
+          <span class="text-slate-400">ZOOM: <strong class="text-white" id="slug-map-zoom">13X</strong></span>
+          <span class="text-slate-400">TROPAS: <strong class="text-emerald-400" id="slug-agent-count">95</strong></span>
+          <span id="zoom-badge-indicator" class="hidden sm:inline-block">
+            <span class="text-cyan-400 text-[9px]">VISTA GENERAL [13X]</span>
+          </span>
+          <span class="text-slate-600">|</span>
+          <span class="text-yellow-400">ESTADO: <strong class="text-emerald-400" id="slug-sim-status">PRE-BROTE (DÍA
+              0)</strong></span>
+        </div>
+      </div>
+
+      <!-- LEAFLET MAP & BATTLEFIELD CANVAS CONTAINER -->
+      <div class="relative flex-1 w-full h-full min-h-0" id="battlefield-wrapper">
+
+        <!-- Leaflet Street Map -->
+        <div id="osm-map" class="absolute inset-0 w-full h-full z-10"></div>
+
+        <!-- CRT Scanlines Overlay -->
+        <div class="absolute inset-0 crt-overlay z-20 pointer-events-none opacity-30"></div>
+
+        <!-- Day/Night Ambient Filter -->
+        <div class="absolute inset-0 pointer-events-none z-20 transition-colors duration-700 bg-transparent"
+          id="ambient-tint-layer"></div>
+
+        <!-- SPOOKYTHON AUTHENTIC ANIMATED GIF DOM SPRITE LAYER -->
+        <div class="absolute inset-0 w-full h-full pointer-events-none overflow-hidden" id="agent-dom-layer"
+          style="z-index: 28;"></div>
+
+        <!-- HTML5 CANVAS FOR METAL SLUG VFX & PARTICLES -->
+        <canvas class="absolute inset-0 w-full h-full pointer-events-none z-30" id="agent-canvas"></canvas>
+
+        <!-- SVG FOR SLUG SUPPLY CRATE PARACHUTE AIRDROP -->
+        <svg class="absolute inset-0 w-full h-full pointer-events-none z-30" id="slug-airdrop-svg">
+          <g id="slug-parachute-crate" opacity="0" transform="translate(0, 0)">
+            <path d="M -22,-24 Q 0,-50 22,-24 Z" fill="#f59e0b" stroke="#78350f" stroke-width="2"></path>
+            <line x1="-22" y1="-24" x2="-8" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
+            <line x1="22" y1="-24" x2="8" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
+            <line x1="0" y1="-44" x2="0" y2="-6" stroke="#f59e0b" stroke-width="1.5"></line>
+            <rect x="-12" y="-6" width="24" height="16" fill="#854d0e" stroke="#fde047" stroke-width="2" rx="1"></rect>
+            <line x1="-12" y1="2" x2="12" y2="2" stroke="#5a3407" stroke-width="1.5"></line>
+            <text x="0" y="6" fill="#fef08a" font-family="'Russo One'" font-size="7" font-weight="bold"
+              text-anchor="middle">CURE</text>
+          </g>
+        </svg>
+
+        <!-- RIGHT-CLICK TACTICAL CONTEXT MENU -->
+        <div id="map-context-menu">
+          <div
+            class="bg-black/95 px-2.5 py-1 text-[9px] font-heavy text-amber-300 border-b border-slate-700 flex items-center justify-between">
+            <span>ACCIONES TÁCTICAS</span>
+            <span class="material-symbols-outlined text-xs">radar</span>
+          </div>
+          <div class="context-menu-item" onclick="focusOnCoordinates(); SFX.button();">
+            <span class="material-symbols-outlined text-emerald-400 text-sm">center_focus_strong</span>
+            <span>ENFOCAR SECTOR (ZOOM)</span>
+          </div>
+          <div class="context-menu-item" onclick="setContextEpicenter(); SFX.alarm();">
+            <span class="material-symbols-outlined text-red-500 text-sm">coronavirus</span>
+            <span>DESPLEGAR PACIENTE CERO AQUÍ</span>
+          </div>
+          <div class="context-menu-item" onclick="deployContextAirdrop(); SFX.cure();">
+            <span class="material-symbols-outlined text-yellow-400 text-sm">paragliding</span>
+            <span>LANZAR ANTÍDOTO AQUÍ</span>
+          </div>
+          <div class="context-menu-item" onclick="hideContextMenu();">
+            <span class="material-symbols-outlined text-slate-400 text-sm">close</span>
+            <span>CERRAR MENÚ</span>
+          </div>
+        </div>
+
+        <!-- CINEMATIC OVERLAY FOR PATIENT ZERO TRANSFORMATION -->
+        <div id="cinematic-overlay" class="cinematic-overlay">
+          <div class="flex items-center justify-between bg-black/90 p-2.5 border border-red-500/80 rounded shadow-xl">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-red-600 animate-ping"></span>
+              <span class="font-stencil text-red-400 text-sm tracking-wider" id="cinematic-title">SATÉLITE MILITAR //
+                DETECCIÓN BIOLÓGICA</span>
+            </div>
+            <span
+              class="font-mono text-xs text-yellow-300 font-bold px-2 py-0.5 bg-yellow-950/80 border border-yellow-500/60 rounded"
+              id="cinematic-stage-badge">FASE 1/3: SÍNTOMA</span>
+          </div>
+
+          <!-- Subtitle Banner -->
+          <div
+            class="bg-black/95 p-3 border border-amber-500/70 rounded-lg shadow-2xl flex flex-col items-center text-center max-w-lg mx-auto">
+            <span class="text-amber-400 font-heavy text-xs" id="cinematic-location">MERCADO DE TARQUI</span>
+            <p class="text-white font-stencil text-sm sm:text-base tracking-wide mt-1 animate-pulse"
+              id="cinematic-desc">
+              SUJETO EXPUESTO A TOXINA BIOLÓGICA... INICIA MUTACIÓN CELULAR
+            </p>
+            <div class="w-64 h-1.5 bg-slate-900 border border-slate-700 rounded-full mt-2 overflow-hidden">
+              <div id="cinematic-progress"
+                class="h-full bg-gradient-to-r from-yellow-500 via-amber-500 to-red-600 transition-all duration-300"
+                style="width: 30%;"></div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- FLOATING HINT (BOTTOM-RIGHT) -->
+        <div
+          class="hidden sm:block absolute bottom-3 right-3 bg-black/80 backdrop-blur border border-slate-800 px-2 py-1 rounded text-slate-400 font-mono text-[9px] pointer-events-none z-30">
+          💡 Clic derecho: Menú táctico & Enfocar
+        </div>
+      </div>
+
+      <!-- Radar Bottom Control Dock (Plegable / Desplegable) -->
+      <div id="bottom-control-dock"
+        class="bg-[#10171e]/95 px-3 py-1.5 border-t border-slate-800 flex items-center justify-between z-30 shrink-0 gap-2 transition-all duration-300">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <!-- Play / Pause -->
+          <button class="btn-arcade-red px-2 py-0.5 rounded text-[10px] flex items-center gap-1 cursor-pointer"
+            id="slug-btn-play" onclick="toggleSimPlay(); SFX.button();">
+            <span id="slug-play-text">⏸️ PAUSE</span>
+          </button>
+
+          <!-- Speed selector -->
+          <div class="flex items-center bg-black/60 p-0.5 border border-slate-800 rounded">
+            <button class="btn-arcade-green px-1.5 py-0.2 text-[9px] rounded text-white cursor-pointer" id="spd-btn-1"
+              onclick="setSpeed(1); SFX.button();">1X</button>
+            <button class="btn-arcade-dark px-1.5 py-0.2 text-[9px] rounded text-slate-400 cursor-pointer"
+              id="spd-btn-2" onclick="setSpeed(2); SFX.button();">2X</button>
+            <button class="btn-arcade-dark px-1.5 py-0.2 text-[9px] rounded text-slate-400 cursor-pointer"
+              id="spd-btn-4" onclick="setSpeed(4); SFX.button();">4X 🚀</button>
+          </div>
+
+          <!-- Zoom & Test shortcuts -->
+          <button class="btn-arcade-gold px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer"
+            onclick="zoomToCombat(); SFX.button();" title="Enfocar punto de combate a 17X">
+            <span class="material-symbols-outlined text-xs">center_focus_strong</span>
+            <span>ENFOCAR (17X)</span>
+          </button>
+          <button class="btn-arcade-red px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer"
+            onclick="spawnTestZombie(); SFX.button();" title="Crear Zombi con Vómito de Sangre y Enfocar">
+            <span class="material-symbols-outlined text-xs">coronavirus</span>
+            <span>PROBAR ZOMBI</span>
+          </button>
+          <button class="btn-arcade-green px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer"
+            onclick="spawnTestImmune(); SFX.button();" title="Crear Inmune Hazmat con Botiquín">
+            <span class="material-symbols-outlined text-xs">medical_services</span>
+            <span>PROBAR INMUNE</span>
+          </button>
+          <button class="btn-arcade-dark px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer"
+            onclick="centerManta(); SFX.button();" title="Volver al mapa general">
+            <span class="material-symbols-outlined text-xs">zoom_out_map</span>
+            <span>VISTA (13X)</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Tile Layer Toggle (MAPA / SAT) -->
+          <div class="flex items-center bg-black/70 p-0.5 border border-slate-800 rounded">
+            <button
+              class="px-2 py-0.5 text-[9px] rounded text-emerald-400 font-heavy bg-emerald-950/70 border border-emerald-500/40 cursor-pointer"
+              id="slug-layer-dark" onclick="setTileLayer('dark'); SFX.button();">
+              MAPA
+            </button>
+            <button class="px-2 py-0.5 text-[9px] rounded text-slate-400 font-heavy hover:text-white cursor-pointer"
+              id="slug-layer-satellite" onclick="setTileLayer('satellite'); SFX.button();">
+              SAT
+            </button>
+          </div>
+
+          <button class="p-1 rounded bg-black/60 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+            onclick="resetSimulation(); SFX.button();" title="Reiniciar Simulación">
+            <span class="material-symbols-outlined text-xs">restart_alt</span>
+          </button>
+          <button
+            class="px-2 py-0.5 rounded bg-black/70 border border-slate-700 text-slate-400 hover:text-white text-[9px] font-mono cursor-pointer flex items-center gap-0.5"
+            onclick="toggleBottomControls(); SFX.button();" title="Plegar controles inferiores para maximizar mapa">
+            <span class="material-symbols-outlined text-xs">expand_more</span>
+            <span>PLEGAR</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FLOATING TRIGGER WHEN BOTTOM BAR IS COLLAPSED -->
+      <div id="bottom-bar-trigger"
+        class="hidden absolute bottom-2 left-1/2 -translate-x-1/2 z-30 bg-black/90 backdrop-blur border border-slate-700 px-3 py-1 rounded-full shadow-2xl flex items-center gap-2">
+        <button class="btn-arcade-red px-2 py-0.5 rounded text-[9px] flex items-center gap-1 cursor-pointer"
+          onclick="toggleSimPlay(); SFX.button();">
+          <span id="floating-play-text">⏸️ PAUSE</span>
+        </button>
+        <button class="btn-arcade-gold px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer"
+          onclick="zoomToCombat(); SFX.button();">
+          <span class="material-symbols-outlined text-xs">center_focus_strong</span>
+          <span>17X</span>
+        </button>
+        <button
+          class="btn-arcade-dark px-2 py-0.5 text-[9px] text-amber-300 rounded font-heavy cursor-pointer flex items-center gap-1"
+          onclick="toggleBottomControls(); SFX.button();" title="Desplegar controles">
+          <span class="material-symbols-outlined text-xs">expand_less</span>
+          <span>CONTROLES</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: COLLAPSIBLE UNIFIED TACTICAL COMMAND DOCK (CONTROLLED ONLY BY HEADER BUTTON) -->
+    <aside id="tactical-dock"
+      class="dock-collapsed h-full min-h-0 glass-panel rounded-lg flex flex-col border border-slate-700/60 transition-all duration-300 overflow-hidden shrink-0">
+
+      <!-- Dock Header with Collapse Action -->
+      <div class="flex items-center justify-between p-2.5 bg-[#0d141b] border-b border-slate-800 shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-amber-400 text-base">tune</span>
+          <span class="text-xs font-heavy text-amber-300 tracking-wider">CONTROLES &amp; PARÁMETROS</span>
+        </div>
+
+      </div>
+
+      <!-- Dock Tabs Header (1st Tab: PARÁMETROS, 2nd: LOGÍSTICA, 3rd: SECTORES) -->
+      <div class="flex border-b border-slate-800 bg-[#0d141b]/90 shrink-0">
+        <button id="tab-btn-control"
+          class="flex-1 py-1.5 text-[10px] font-heavy text-amber-300 border-b-2 border-amber-400 bg-white/5 cursor-pointer"
+          onclick="switchSidebarTab('control'); SFX.button();">
+          🎛️ PARÁMETROS
+        </button>
+        <button id="tab-btn-logistica"
+          class="flex-1 py-1.5 text-[10px] font-heavy text-slate-400 border-b-2 border-transparent hover:text-white cursor-pointer"
+          onclick="switchSidebarTab('logistica'); SFX.button();">
+          🧪 LOGÍSTICA
+        </button>
+        <button id="tab-btn-sectores"
+          class="flex-1 py-1.5 text-[10px] font-heavy text-slate-400 border-b-2 border-transparent hover:text-white cursor-pointer"
+          onclick="switchSidebarTab('sectores'); SFX.button();">
+          📊 SECTORES
+        </button>
+      </div>
+
+      <!-- Dock Content Area -->
+      <div class="flex-1 min-h-0 overflow-y-auto p-2.5 flex flex-col gap-2.5">
+
+        <!-- TAB 1 (FIRST & DEFAULT): PARAMETRIZACIÓN PRE-BROTE & CONTROL -->
+        <div id="tab-content-control" class="flex flex-col gap-2">
+
+          <!-- 0. ESCENARIOS PREDETERMINADOS (ZOMBIES + DESASTRES NATURALES Y METEOROLÓGICOS) -->
+          <div class="bg-black/80 p-2 border border-amber-500/40 rounded-lg flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-amber-300 font-heavy text-[9px] flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs text-amber-400">thunderstorm</span>
+                <span>ESCENARIOS PREDETERMINADOS (ZOMBIES + CLIMA)</span>
+              </span>
+              <span class="text-[8px] font-mono text-emerald-400">AUTO-SETEO</span>
+            </div>
+            <div class="grid grid-cols-1 gap-1.5">
+              <!-- Escenario A: Tsunami & Sismo 7.8 -->
+              <button id="preset-card-A" onclick="switchScenario('A'); SFX.button();"
+                class="p-2 rounded border-2 border-red-500/80 bg-red-950/40 hover:bg-red-900/40 text-left transition-all cursor-pointer flex items-start justify-between gap-2">
+                <div class="flex flex-col">
+                  <span class="font-heavy text-[10px] text-red-300">
+                    🌊 1. TSUNAMI &amp; SISMO 7.8 (TARQUI)
+                  </span>
+                  <span class="text-[8px] text-slate-300 font-mono leading-tight mt-0.5">
+                    Inundación costera y pánico masivo (140 tropas) • Agua bio-contaminada acelera mutación (5s) •
+                    Recursos críticos (400 balas / 1 cura)
+                  </span>
+                </div>
+                <span
+                  class="px-1.5 py-0.5 bg-red-900/90 text-red-200 font-mono font-bold text-[8px] rounded shrink-0">EXTREMO</span>
+              </button>
+
+              <!-- Escenario B: Supertormenta El Niño & Apagón -->
+              <button id="preset-card-B" onclick="switchScenario('B'); SFX.button();"
+                class="p-2 rounded border border-slate-700 bg-[#111820] hover:border-cyan-400/60 text-left transition-all cursor-pointer flex items-start justify-between gap-2">
+                <div class="flex flex-col">
+                  <span class="font-heavy text-[10px] text-cyan-300">
+                    ⛈️ 2. SUPERTORMENTA EL NIÑO &amp; APAGÓN
+                  </span>
+                  <span class="text-[8px] text-slate-400 font-mono leading-tight mt-0.5">
+                    Lluvia torrencial y corte eléctrico nocturno en Murciélago (95 tropas) • Pasos bloqueados por
+                    crecida • Incubación 9s (800 balas / 3 curas)
+                  </span>
+                </div>
+                <span
+                  class="px-1.5 py-0.5 bg-cyan-950 text-cyan-300 border border-cyan-500/40 font-mono font-bold text-[8px] rounded shrink-0">TORMENTA</span>
+              </button>
+
+              <!-- Escenario C: Ciclón Costero & Marea Roja Tóxica -->
+              <button id="preset-card-C" onclick="switchScenario('C'); SFX.button();"
+                class="p-2 rounded border border-slate-700 bg-[#111820] hover:border-emerald-400/60 text-left transition-all cursor-pointer flex items-start justify-between gap-2">
+                <div class="flex flex-col">
+                  <span class="font-heavy text-[10px] text-emerald-300">
+                    ☣️ 3. CICLÓN &amp; MAREA ROJA BIO-TÓXICA
+                  </span>
+                  <span class="text-[8px] text-slate-400 font-mono leading-tight mt-0.5">
+                    Vendaval y bio-niebla en Puerto Manta • Población en refugios (60 tropas) • Cordón militar y alta
+                    reserva Hazmat (1500 balas / 6 curas)
+                  </span>
+                </div>
+                <span
+                  class="px-1.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[8px] rounded shrink-0">CONTENCIÓN</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 1. Lugar de Inicio (Paciente Cero) -->
+          <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+            <label class="text-amber-300 font-heavy text-[9px] block">1. LUGAR DE INICIO (PACIENTE CERO):</label>
+            <select
+              class="w-full bg-[#131b22] border border-slate-700 text-emerald-400 font-mono text-[10px] p-1.5 rounded cursor-pointer"
+              id="init-epicenter-select" onchange="changeEpicenter(this.value); SFX.button();">
+              <option value="Tarqui">1. MERCADO CENTRAL DE TARQUI</option>
+              <option value="Murcielago">2. PLAYA MURCIÉLAGO / MALECÓN</option>
+              <option value="PuertoManta">3. AV. MALECÓN Y PLAZA CÍVICA</option>
+              <option value="Pescador">4. REDONDEL DE INEPACA</option>
+              <option value="Jocay">5. BARRIO JOCAY</option>
+              <option value="EloyAlfaro">6. PARROQUIA ELOY ALFARO</option>
+              <option value="LosEsteros">7. COSTA AZUL / LOS ESTEROS</option>
+              <option value="Montecristi">8. NUDO E30 / MONTECRISTI</option>
+              <option value="SanMateo">9. CALETA SAN MATEO</option>
+              <option value="Jaramijo">10. PLAYA JARAMIJÓ</option>
+            </select>
+          </div>
+
+          <!-- 2. Población en Calle -->
+          <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+            <div class="flex justify-between text-[9px]">
+              <span class="text-slate-300 font-heavy">2. POBLACIÓN EN CALLE:</span>
+              <span class="font-mono text-emerald-400 font-bold" id="init-agents-val">95 TROPAS</span>
+            </div>
+            <input type="range" min="40" max="150" step="5" value="95" id="init-agents-slider"
+              class="w-full accent-emerald-500 h-1.5 bg-slate-800 rounded cursor-pointer"
+              oninput="document.getElementById('init-agents-val').innerText = this.value + ' TROPAS';" />
+          </div>
+
+          <!-- 2b. Personas con armas (reparto aleatorio) -->
+          <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+            <div class="flex justify-between text-[9px]">
+              <span class="text-slate-300 font-heavy">2b. PERSONAS CON ARMAS (REPARTO ALEATORIO):</span>
+              <span class="font-mono text-cyan-400 font-bold" id="init-armed-val">20 ARMADOS</span>
+            </div>
+            <input type="range" min="0" max="150" step="1" value="20" id="init-armed-slider"
+              class="w-full accent-cyan-400 h-1.5 bg-slate-800 rounded cursor-pointer"
+              oninput="document.getElementById('init-armed-val').innerText = this.value + ' ARMADOS';" />
+          </div>
+
+          <!-- 3. Tasa de Inmunidad Natural -->
+          <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+            <div class="flex justify-between text-[9px]">
+              <span class="text-slate-300 font-heavy">3. TASA DE INMUNIDAD NATURAL:</span>
+              <span class="font-mono text-yellow-400 font-bold" id="init-immune-val">8% INMUNES</span>
+            </div>
+            <input type="range" min="0" max="20" step="1" value="8" id="init-immune-slider"
+              class="w-full accent-yellow-400 h-1.5 bg-slate-800 rounded cursor-pointer"
+              oninput="document.getElementById('init-immune-val').innerText = this.value + '% INMUNES';" />
+          </div>
+
+          <!-- 4. Tiempo de Incubación (Mordido) -->
+          <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1">
+            <div class="flex justify-between text-[9px]">
+              <span class="text-slate-300 font-heavy">4. TIEMPO DE INCUBACIÓN (MORDIDO):</span>
+              <span class="font-mono text-amber-400 font-bold" id="live-incub-text">8s</span>
+            </div>
+            <input type="range" min="3" max="25" step="1" value="8" id="init-incub-slider"
+              class="w-full accent-amber-500 h-1.5 bg-slate-800 rounded cursor-pointer"
+              oninput="setIncubationTime(this.value)" />
+          </div>
+
+          <!-- 5. Recursos Limitados -->
+          <div class="bg-black/60 p-2 border border-slate-800 rounded flex flex-col gap-1.5">
+            <span class="text-amber-300 font-heavy text-[9px]">5. RECURSOS LIMITADOS:</span>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div>
+                <span class="text-cyan-400 text-[8px] font-heavy block mb-0.5">MUNICIÓN:</span>
+                <select id="init-ammo-select"
+                  class="w-full bg-[#131b22] text-cyan-300 font-mono text-[9px] p-1 rounded border border-slate-700 cursor-pointer">
+                  <option value="400">400 BALAS</option>
+                  <option value="800" selected>800 BALAS</option>
+                  <option value="1500">1,500 BALAS</option>
+                </select>
+              </div>
+              <div>
+                <span class="text-yellow-400 text-[8px] font-heavy block mb-0.5">CAJAS ANTÍDOTO:</span>
+                <select id="init-crates-select"
+                  class="w-full bg-[#131b22] text-yellow-300 font-mono text-[9px] p-1 rounded border border-slate-700 cursor-pointer">
+                  <option value="1">1 CAJA</option>
+                  <option value="3" selected>3 CAJAS</option>
+                  <option value="6">6 CAJAS</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Condiciones y Entorno -->
+          <div class="grid grid-cols-2 gap-1.5">
+            <button class="btn-arcade-dark p-1.5 rounded flex items-center justify-between cursor-pointer"
+              id="slug-btn-night"
+              onclick="toggleNightCycle(); document.getElementById('init-night-check').checked = !document.getElementById('init-night-check').checked; SFX.button();">
+              <div class="flex flex-col text-left">
+                <span class="font-heavy text-[9px] text-yellow-400" id="slug-lbl-night">MODO DÍA</span>
+                <span class="text-slate-500 font-mono text-[8px]">Luz Solar</span>
+              </div>
+              <span class="material-symbols-outlined text-yellow-400 text-sm" id="slug-icon-night">wb_sunny</span>
+            </button>
+            <button class="btn-arcade-red p-1.5 rounded flex items-center justify-between cursor-pointer"
+              id="slug-btn-carnaval"
+              onclick="toggleCarnaval(); document.getElementById('init-carnaval-check').checked = !document.getElementById('init-carnaval-check').checked; SFX.alarm();">
+              <div class="flex flex-col text-left">
+                <span class="font-heavy text-[9px] text-white" id="slug-lbl-carnaval">CARNAVAL: ON</span>
+                <span class="text-red-200 font-mono text-[8px]">+300% Multitud</span>
+              </div>
+              <span class="material-symbols-outlined text-white text-sm animate-bounce"
+                id="slug-icon-carnaval">festival</span>
+            </button>
+          </div>
+
+          <!-- Cerco Vial -->
+          <div class="flex items-center justify-between bg-black/60 p-2 border border-slate-800 rounded">
+            <div class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-amber-500 text-sm">fence</span>
+              <span class="text-slate-300 text-[9px] font-heavy">CERCO VIAL E15 / E30</span>
+            </div>
+            <button class="btn-arcade-dark px-2 py-0.5 text-[9px] rounded text-slate-400 cursor-pointer"
+              id="slug-btn-cerco"
+              onclick="toggleCercoVial(); document.getElementById('init-cerco-check').checked = !document.getElementById('init-cerco-check').checked; SFX.button();">
+              DESACTIVADO
+            </button>
+          </div>
+
+          <!-- Semilla Monte Carlo (NumPy) -->
+          <div class="bg-black/60 p-2 border border-slate-800 rounded flex items-center justify-between gap-2">
+            <span class="text-slate-300 font-heavy text-[9px]">SEMILLA MONTE CARLO (NUMPY):</span>
+            <input type="number" id="init-mc-seed" value="42" min="0"
+              class="w-20 bg-[#131b22] border border-slate-700 text-cyan-300 font-mono text-[10px] p-1 rounded text-right" />
+          </div>
+
+          <!-- Synced hidden checkboxes for engine compatibility -->
+          <div class="hidden">
+            <input type="checkbox" id="init-carnaval-check" checked />
+            <input type="checkbox" id="init-night-check" />
+            <input type="checkbox" id="init-cerco-check" />
+          </div>
+
+          <!-- PRIMARY LAUNCH SIMULATION BUTTON -->
+          <button
+            class="btn-arcade-gold w-full py-2.5 rounded text-[11px] font-heavy flex items-center justify-center gap-1.5 cursor-pointer shadow-lg mt-1"
+            onclick="confirmAndLaunchOutbreak(); SFX.alarm();">
+            <span class="material-symbols-outlined text-sm">coronavirus</span>
+            <span>INICIAR SIMULACIÓN DESDE CERO</span>
+          </button>
+        </div>
+
+        <!-- TAB 2: LOGÍSTICA & ANTÍDOTO -->
+        <div id="tab-content-logistica" class="hidden flex flex-col gap-2.5">
+          <!-- Cure Synthesis Progress -->
+          <div class="bg-black/60 p-2.5 border border-slate-800 rounded-lg flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400 font-heavy text-[10px]">SÍNTESIS DE ANTÍDOTO:</span>
+              <span class="font-led text-sm text-yellow-300 font-bold" id="slug-cure-text">0.0%</span>
+            </div>
+            <!-- Progress Bar -->
+            <div class="w-full h-3 bg-slate-900 border border-slate-700 rounded-sm overflow-hidden p-0.5">
+              <div
+                class="h-full bg-gradient-to-r from-yellow-500 via-amber-500 to-emerald-400 rounded-sm transition-all duration-300"
+                id="slug-cure-bar" style="width: 0%;"></div>
+            </div>
+            <div class="flex justify-between text-[9px] text-slate-400">
+              <span>ETA: <strong class="text-white" id="slug-cure-eta">PRODUCIENDO...</strong></span>
+              <span class="text-emerald-400 font-bold" id="slug-cure-batches">+1 CAJA AL 100%</span>
+            </div>
+          </div>
+
+          <!-- Stock Telemetry -->
+          <div class="grid grid-cols-2 gap-1.5 bg-black/60 p-2 border border-slate-800 rounded-lg text-[10px]">
+            <div>
+              <span class="text-cyan-400 text-[9px] block">MUNICIÓN RESTANTE:</span>
+              <span class="font-mono text-white font-bold" id="lbl-ammo-stock">800 / 800</span>
+            </div>
+            <div>
+              <span class="text-yellow-400 text-[9px] block">CAJAS DE ANTÍDOTO:</span>
+              <span class="font-mono text-yellow-300 font-bold" id="lbl-crate-stock">03 CAJAS</span>
+            </div>
+          </div>
+
+          <!-- Distribution Priority -->
+          <div class="flex flex-col gap-1">
+            <label class="text-slate-400 text-[9px] font-heavy">PRIORIDAD DE DISTRIBUCIÓN:</label>
+            <div class="grid grid-cols-3 gap-1">
+              <button class="btn-arcade-green py-1 text-[9px] rounded cursor-pointer" id="slug-prio-med"
+                onclick="setDistributionPrio('med'); SFX.button();">MÉDICOS</button>
+              <button class="btn-arcade-dark py-1 text-[9px] rounded text-slate-400 cursor-pointer" id="slug-prio-costa"
+                onclick="setDistributionPrio('costa'); SFX.button();">COSTA</button>
+              <button class="btn-arcade-dark py-1 text-[9px] rounded text-slate-400 cursor-pointer" id="slug-prio-peri"
+                onclick="setDistributionPrio('peri'); SFX.button();">PERIFERIA</button>
+            </div>
+          </div>
+
+          <!-- Deploy Cure Button -->
+          <button
+            class="btn-arcade-gold w-full py-2.5 rounded text-[11px] shadow-lg flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+            onclick="deployCureAirdrop();">
+            <span class="material-symbols-outlined text-sm">paragliding</span>
+            <span>LANZAR ANTÍDOTO (GASTA 1 CAJA)</span>
+          </button>
+        </div>
+
+        <!-- TAB 3: SECTORES & CURVA EPIDEMIOLÓGICA -->
+        <div id="tab-content-sectores" class="hidden flex flex-col gap-2.5">
+          <!-- Parroquia Contagion Bars -->
+          <div class="flex flex-col gap-1.5 bg-black/60 p-2.5 border border-slate-800 rounded-lg">
+            <span class="text-slate-400 text-[9px] font-heavy border-b border-slate-800 pb-1">
+              CONTENCIÓN POR PARROQUIA (EN VIVO)
+            </span>
+            <!-- Tarqui -->
+            <div class="flex flex-col gap-0.5">
+              <div class="flex justify-between text-[8px] font-heavy">
+                <span class="text-red-400">TARQUI</span>
+                <span class="text-red-400 font-mono" id="bar-tarqui-text">0% INFECTED</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div class="bg-red-500 h-full transition-all duration-300" id="bar-tarqui" style="width: 0%;"></div>
+              </div>
+            </div>
+            <!-- Murciélago -->
+            <div class="flex flex-col gap-0.5">
+              <div class="flex justify-between text-[8px] font-heavy">
+                <span class="text-emerald-400">MURCIÉLAGO</span>
+                <span class="text-emerald-400 font-mono" id="bar-murcielago-text">0% INFECTED</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div class="bg-emerald-500 h-full transition-all duration-300" id="bar-murcielago" style="width: 0%;">
+                </div>
+              </div>
+            </div>
+            <!-- Eloy Alfaro -->
+            <div class="flex flex-col gap-0.5">
+              <div class="flex justify-between text-[8px] font-heavy">
+                <span class="text-yellow-400">ELOY ALFARO</span>
+                <span class="text-yellow-400 font-mono" id="bar-eloy-text">0% INFECTED</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div class="bg-yellow-500 h-full transition-all duration-300" id="bar-eloy" style="width: 0%;"></div>
+              </div>
+            </div>
+            <!-- Montecristi -->
+            <div class="flex flex-col gap-0.5">
+              <div class="flex justify-between text-[8px] font-heavy">
+                <span class="text-cyan-300">MONTECRISTI [E30]</span>
+                <span class="text-cyan-300 font-mono" id="bar-montecristi-text">0% INFECTED</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div class="bg-cyan-500 h-full transition-all duration-300" id="bar-montecristi" style="width: 0%;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEIR Dynamic Graph -->
+          <div class="flex flex-col gap-1 bg-black/60 p-2 border border-slate-800 rounded-lg">
+            <div class="flex justify-between text-[8px] text-slate-400">
+              <span>CURVA SEIR (60 DÍAS)</span>
+              <div class="flex gap-2">
+                <span class="text-emerald-400">■ S</span>
+                <span class="text-amber-400">■ E</span>
+                <span class="text-red-500">■ I</span>
+                <span class="text-yellow-400">■ R</span>
+              </div>
+            </div>
+            <div class="w-full h-14 bg-black border border-slate-900 rounded relative overflow-hidden">
+              <svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 600 70">
+                <line stroke="#1e293b" stroke-width="1" x1="0" x2="600" y1="20" y2="20"></line>
+                <line stroke="#1e293b" stroke-width="1" x1="0" x2="600" y1="45" y2="45"></line>
+                <path id="curve-susceptible" d="M 0,10 L 600,10" fill="none" stroke="#22c55e" stroke-width="2"></path>
+                <path id="curve-bitten" d="M 0,68 L 600,68" fill="none" stroke="#f59e0b" stroke-width="2"></path>
+                <path id="curve-infected" d="M 0,68 L 600,68" fill="none" stroke="#dc2626" stroke-width="2.5"></path>
+                <path id="curve-immune" d="M 0,60 L 600,60" fill="none" stroke="#eab308" stroke-dasharray="4,2"
+                  stroke-width="1.8"></path>
+                <line id="day-marker-line" stroke="#facc15" stroke-dasharray="3,3" stroke-width="1.5" x1="10" x2="10"
+                  y1="0" y2="70"></line>
+                <text id="day-marker-text" fill="#facc15" font-family="'JetBrains Mono'" font-size="7"
+                  font-weight="bold" x="14" y="14">DÍA 0</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- 3. INTERACTIVE SPOOKYTHON SHOWCASE MODAL -->
+  <div id="metal-slug-showcase"
+    class="fixed inset-2 sm:inset-6 z-50 bg-[#090d12]/95 backdrop-blur-md border border-amber-500/70 rounded-xl shadow-2xl flex flex-col overflow-hidden hidden">
+    <!-- Header -->
+    <div class="bg-black/90 px-4 py-2.5 border-b border-amber-500/50 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5">
+        <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
+        <div>
+          <h2 class="arcade-title text-sm sm:text-base text-yellow-300 tracking-wider">
+            ENCICLOPEDIA // LA PLAGA ZOMBIE — SPOOKYTHON 2026 (TRACK B)
+          </h2>
+          <span class="text-[9px] text-slate-400 font-mono">
+            Personajes originales pixel art 32x40 diseñados específicamente para los 4 estados del modelo SEIR
+          </span>
+        </div>
+      </div>
+      <button
+        class="px-2.5 py-1 text-slate-400 hover:text-white bg-slate-800/80 rounded border border-slate-700 text-xs font-mono cursor-pointer"
+        onclick="closeMetalSlugShowcase();">✕ CERRAR</button>
+    </div>
+
+    <!-- Main Content: Character Selector Bar + 4 States Grid -->
+    <div class="flex-1 min-h-0 flex flex-col p-3 overflow-y-auto gap-3">
+      <!-- Character Tabs Header -->
+      <div class="flex items-center gap-1.5 shrink-0 bg-black/60 p-1 rounded-lg border border-slate-800"
+        id="showcase-character-tabs"></div>
+
+      <!-- Banner Estados Preview GIF (Spookython 2026 Track B) -->
+      <div
+        class="bg-black/80 border border-amber-500/40 rounded-lg p-2 flex flex-col items-center justify-center gap-1 shrink-0">
+        <div class="flex items-center justify-between w-full px-2">
+          <span class="text-[9px] font-heavy text-amber-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            VISTA PREVIA INTEGRAL DE ESTADOS SEIR // SPOOKYTHON 2026 (TRACK B)
+          </span>
+          <span class="text-[8px] font-mono text-slate-400">Alta Definicion HD: 48x56 @ 5x (240x280) • 36 Colores •
+            Bucles de 6 Frames</span>
+        </div>
+        <img src="assets/sprites/estados_preview.gif" alt="Estados SEIR Preview"
+          class="pixelated h-20 sm:h-24 object-contain rounded border border-slate-800 bg-[#060a0e] w-full" />
+      </div>
+
+      <!-- 4 Columns Grid: Sano, Mordido, Zombie, Exorcizado -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 flex-1 min-h-0">
+        <!-- Card 1: Sano -->
+        <div
+          class="bg-black/70 border border-emerald-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
+          <div class="w-full flex items-center justify-between border-b border-emerald-950 pb-1 mb-2">
+            <span class="font-heavy text-emerald-400 text-[10px]">1. SANO (S)</span>
+            <span
+              class="text-[8px] font-mono px-1.5 py-0.2 bg-emerald-950 text-emerald-300 rounded border border-emerald-600/50">SUSCEPTIBLE</span>
+          </div>
+          <div
+            class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
+            <img id="showcase-img-human" src="assets/sprites/sano.gif" alt="Sano"
+              class="pixelated h-28 object-contain drop-shadow-md" />
+          </div>
+          <p id="showcase-desc-human" class="text-[9px] text-slate-300 mt-2 leading-tight">
+            Soldadito civil en posición firme saludando con pañuelo rojo ondeando y gorra de campaña.
+          </p>
+          <a href="assets/sprites/sano_sheet.png" target="_blank"
+            class="mt-2 w-full py-1 bg-emerald-950/80 border border-emerald-600/60 text-emerald-300 text-[9px] font-heavy rounded hover:bg-emerald-900 cursor-pointer text-center block">
+            📄 HOJA HD (6 FRAMES)
+          </a>
+        </div>
+
+        <!-- Card 2: Mordido -->
+        <div
+          class="bg-black/70 border border-amber-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
+          <div class="w-full flex items-center justify-between border-b border-amber-950 pb-1 mb-2">
+            <span class="font-heavy text-amber-400 text-[10px]">2. MORDIDO (E)</span>
+            <span
+              class="text-[8px] font-mono px-1.5 py-0.2 bg-amber-950 text-amber-300 rounded border border-amber-600/50">INCUBANDO</span>
+          </div>
+          <div
+            class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
+            <img id="showcase-img-bitten" src="assets/sprites/mordido.gif" alt="Mordido"
+              class="pixelated h-28 object-contain agent-bitten" />
+            <div
+              class="absolute bottom-1 bg-amber-950/90 border border-amber-500/60 px-2 py-0.5 rounded text-[8px] font-mono text-amber-300">
+              VIRUS Z: INCUBANDO...
+            </div>
+          </div>
+          <p id="showcase-desc-bitten" class="text-[9px] text-slate-300 mt-2 leading-tight">
+            Convulsionando con sudor frío, marcas de mordedura viva, sangre goteando y red de venas infectadas.
+          </p>
+          <a href="assets/sprites/mordido_sheet.png" target="_blank"
+            class="mt-2 w-full py-1 bg-amber-950/80 border border-amber-600/60 text-amber-300 text-[9px] font-heavy rounded hover:bg-amber-900 cursor-pointer text-center block">
+            📄 HOJA HD (6 FRAMES)
+          </a>
+        </div>
+
+        <!-- Card 3: Zombie -->
+        <div
+          class="bg-black/70 border border-red-500/60 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
+          <div class="w-full flex items-center justify-between border-b border-red-950 pb-1 mb-2">
+            <span class="font-heavy text-red-400 text-[10px]">3. ZOMBIE (I)</span>
+            <span
+              class="text-[8px] font-mono px-1.5 py-0.2 bg-red-950 text-red-300 rounded border border-red-600/50 animate-pulse">INFECTADO</span>
+          </div>
+          <div
+            class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
+            <img id="showcase-img-zombie" src="assets/sprites/zombie.gif" alt="Zombie"
+              class="pixelated h-28 object-contain agent-infected" />
+            <div id="showcase-vomit-banner"
+              class="hidden absolute top-2 right-2 px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-heavy rounded animate-bounce">
+              ¡ATAQUE ZOMBIE!
+            </div>
+          </div>
+          <p id="showcase-desc-zombie" class="text-[9px] text-slate-300 mt-2 leading-tight">
+            Paso lisiado de marcha voraz, 3 costillas expuestas con sangre coagulada, mandíbula desencajada y garras
+            extendidas.
+          </p>
+          <div class="mt-2 flex flex-col gap-1 w-full">
+            <button
+              class="w-full py-1 bg-red-950/80 border border-red-600/60 text-red-300 text-[9px] font-heavy rounded hover:bg-red-900 cursor-pointer"
+              onclick="testShowcaseBloodVomit();">
+              🧟 ACTIVAR ATAQUE ZOMBIE
+            </button>
+            <a href="assets/sprites/zombie_sheet.png" target="_blank"
+              class="w-full py-0.5 bg-slate-900/80 border border-slate-700 text-slate-300 text-[8px] font-mono rounded hover:text-white cursor-pointer text-center block">
+              📄 HOJA HD (6 FRAMES)
+            </a>
+          </div>
+        </div>
+
+        <!-- Card 4: Exorcizado -->
+        <div
+          class="bg-black/70 border border-yellow-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
+          <div class="w-full flex items-center justify-between border-b border-yellow-950 pb-1 mb-2">
+            <span class="font-heavy text-yellow-400 text-[10px]">4. EXORCIZADO (R)</span>
+            <span
+              class="text-[8px] font-mono px-1.5 py-0.2 bg-yellow-950 text-yellow-300 rounded border border-yellow-600/50">RECUPERADO</span>
+          </div>
+          <div
+            class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
+            <img id="showcase-img-immune" src="assets/sprites/exorcizado.gif" alt="Exorcizado"
+              class="pixelated h-28 object-contain agent-immune" />
+          </div>
+          <p id="showcase-desc-immune" class="text-[9px] text-slate-300 mt-2 leading-tight">
+            Flotación senoidal en túnica astral con pliegues etéreos, aureola dorada de 4 rayos y estrellas de bendición
+            sagrada.
+          </p>
+          <div class="mt-2 flex flex-col gap-1 w-full">
+            <button
+              class="w-full py-1 bg-yellow-950/80 border border-yellow-600/60 text-yellow-300 text-[9px] font-heavy rounded hover:bg-yellow-900 cursor-pointer"
+              onclick="testShowcaseImmuneShield();">
+              ✨ BENDICIÓN PURIFICADORA
+            </button>
+            <a href="assets/sprites/exorcizado_sheet.png" target="_blank"
+              class="w-full py-0.5 bg-slate-900/80 border border-slate-700 text-slate-300 text-[8px] font-mono rounded hover:text-white cursor-pointer text-center block">
+              📄 HOJA HD (6 FRAMES)
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div
+      class="bg-black/80 px-4 py-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <span class="text-slate-400 text-[9px] font-mono">
+        💡 En el mapa en vivo: Haz clic en "ENFOCAR (17X)" para ver estos micro-sprites en acción en las calles de
+        Manta.
+      </span>
+      <div class="flex items-center gap-2">
+        <button class="btn-arcade-gold px-3 py-1 rounded text-[10px] flex items-center gap-1 cursor-pointer"
+          onclick="closeMetalSlugShowcase(); zoomToCombat(); SFX.button();">
+          <span class="material-symbols-outlined text-xs">center_focus_strong</span>
+          <span>IR AL MAPA (ZOOM 17X)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Tab Navigation Script -->
+  <script>
+    function switchSidebarTab(tabName) {
+      ['logistica', 'control', 'sectores'].forEach(t => {
+        const content = document.getElementById(`tab-content-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (content) {
+          if (t === tabName) content.classList.remove('hidden');
+          else content.classList.add('hidden');
+        }
+        if (btn) {
+          if (t === tabName) {
+            btn.className = 'flex-1 py-1.5 text-[10px] font-heavy text-amber-300 border-b-2 border-amber-400 bg-white/5 cursor-pointer';
+          } else {
+            btn.className = 'flex-1 py-1.5 text-[10px] font-heavy text-slate-400 border-b-2 border-transparent hover:text-white cursor-pointer';
+          }
+        }
+      });
+    }
+  </script>
+
+  <!-- MAIN SIMULATION ENGINE -->
+  <script src="js/engine.js?v=20261027_fixed_engine"></script>
+</body>
+
+</html>

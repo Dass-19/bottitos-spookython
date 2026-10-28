@@ -1,5 +1,5 @@
 // ==========================================================================
-// MANTA OUTBREAK // GPS LANDMARKS & STREET NETWORK (CALLES / AVENIDAS / VÍAS)
+// MantaZero: Epidemic Command // GPS LANDMARKS & STREET NETWORK (CALLES / AVENIDAS / VÍAS)
 // 20 Official Street & Avenue Intersections of Manta Cantón
 // ==========================================================================
 

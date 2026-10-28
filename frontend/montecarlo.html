@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>MantaZero: Epidemic Command - Dashboard Monte Carlo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;700&family=Russo+One&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/css/arcade.css"/>
+  <style>
+    body { font-family: 'Chakra Petch', sans-serif; }
+    .font-heavy { font-family: 'Russo One', sans-serif; }
+  </style>
+</head>
+<body class="bg-[#080c10] text-slate-100 min-h-screen p-3 sm:p-5">
+
+  <header class="glass-panel rounded-lg px-4 py-2.5 flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <h1 class="arcade-title text-lg tracking-wider">MONTE CARLO // MantaZero: Epidemic Command</h1>
+      <span id="meta-badge" class="px-2 py-0.5 bg-cyan-950 border border-cyan-500/40 text-cyan-300 rounded text-[10px] font-mono">cargando…</span>
+    </div>
+    <a href="/" class="btn-arcade-gold px-3 py-1.5 rounded text-[10px] font-heavy">← VOLVER A LA SIMULACIÓN</a>
+  </header>
+
+  <div id="waiting" class="glass-panel rounded-lg p-8 text-center">
+    <p class="font-heavy text-amber-300 mb-3">Monte Carlo en ejecución…</p>
+    <div class="w-full max-w-md mx-auto h-3 bg-slate-900 border border-slate-700 rounded overflow-hidden">
+      <div id="wait-bar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400" style="width:0%"></div>
+    </div>
+    <p id="wait-txt" class="font-mono text-xs text-slate-400 mt-2">0%</p>
+    <p class="text-[11px] text-slate-500 mt-3">Inicia una simulación desde la pantalla principal para generar resultados.</p>
+  </div>
+
+  <main id="dash" class="hidden flex flex-col gap-4">
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="kpis"></section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div class="glass-panel rounded-lg p-3">
+        <h2 class="font-heavy text-[11px] text-amber-300 mb-2">ZOMBIS ACTIVOS (I) — PROMEDIO Y RANGO P5–P95 / P25–P75</h2>
+        <canvas id="chart-i" height="150"></canvas>
+      </div>
+      <div class="glass-panel rounded-lg p-3">
+        <h2 class="font-heavy text-[11px] text-amber-300 mb-2">COMPARTIMENTOS SEIR — PROMEDIO</h2>
+        <canvas id="chart-seir" height="150"></canvas>
+      </div>
+      <div class="glass-panel rounded-lg p-3">
+        <h2 class="font-heavy text-[11px] text-amber-300 mb-2">DISTRIBUCIÓN DEL PICO DE ZOMBIS</h2>
+        <canvas id="chart-hist" height="150"></canvas>
+      </div>
+      <div class="glass-panel rounded-lg p-3">
+        <h2 class="font-heavy text-[11px] text-amber-300 mb-2">PARÁMETROS DE LA CORRIDA</h2>
+        <table class="w-full text-[11px] font-mono" id="params-table"></table>
+      </div>
+    </section>
+
+    <section class="glass-panel rounded-lg p-3 overflow-x-auto">
+      <h2 class="font-heavy text-[11px] text-amber-300 mb-2">RESUMEN ESTADÍSTICO (PROMEDIOS Y RANGOS)</h2>
+      <table class="w-full text-[11px] font-mono text-right" id="summary-table"></table>
+    </section>
+  </main>
+
+<script>
+const fmt = n => Math.round(n).toLocaleString('es-EC');
+const COLORS = { S:'#22c55e', E:'#f59e0b', I:'#ef4444', R:'#facc15' };
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(148,163,184,0.12)';
+
+async function poll() {
+  const r = await fetch('/api/montecarlo/results');
+  if (r.status === 200) { render(await r.json()); return; }
+  const st = await r.json().catch(() => ({}));
+  const pct = Math.round((st.progress || 0) * 100);
+  document.getElementById('wait-bar').style.width = pct + '%';
+  document.getElementById('wait-txt').innerText =
+    st.state === 'idle' ? 'Sin corrida activa' : pct + '%';
+  setTimeout(poll, 1500);
+}
+
+function render(d) {
+  document.getElementById('waiting').classList.add('hidden');
+  document.getElementById('dash').classList.remove('hidden');
+  document.getElementById('meta-badge').innerText =
+    `${d.meta.runs} corridas · semilla NumPy ${d.meta.seed} · ${d.meta.days} días`;
+  const s = d.summary;
+  const kpis = [
+    ['PICO DE ZOMBIS (PROM.)', fmt(s.peakInfected.mean), `rango ${fmt(s.peakInfected.p5)} – ${fmt(s.peakInfected.p95)}`, 'text-red-400'],
+    ['DÍA DEL PICO (PROM.)', s.peakDay.mean.toFixed(1), `rango ${s.peakDay.p5.toFixed(0)} – ${s.peakDay.p95.toFixed(0)}`, 'text-amber-300'],
+    ['ZOMBIS ABATIDOS (PROM.)', fmt(s.zombiesKilled.mean), `rango ${fmt(s.zombiesKilled.p5)} – ${fmt(s.zombiesKilled.p95)}`, 'text-emerald-400'],
+    ['PROB. DE CONTENCIÓN', (s.containmentProbability * 100).toFixed(1) + '%', 'zombis = 0 al día ' + d.meta.days, 'text-cyan-300'],
+    ['AFECTADOS TOTALES (PROM.)', fmt(s.totalAttacked.mean), `rango ${fmt(s.totalAttacked.p5)} – ${fmt(s.totalAttacked.p95)}`, 'text-red-300'],
+    ['MUNICIÓN RESTANTE (PROM.)', fmt(s.ammoLeft.mean), `rango ${fmt(s.ammoLeft.p5)} – ${fmt(s.ammoLeft.p95)}`, 'text-cyan-300'],
+    ['PROB. MUNICIÓN AGOTADA', (s.ammoExhaustedProbability * 100).toFixed(1) + '%', s.ammoExhaustedDay ? 'día prom. ' + s.ammoExhaustedDay.mean.toFixed(1) : 'nunca', 'text-amber-300'],
+    ['ZOMBIS FINALES (PROM.)', fmt(s.finalInfected.mean), `rango ${fmt(s.finalInfected.p5)} – ${fmt(s.finalInfected.p95)}`, 'text-red-400'],
+  ];
+  document.getElementById('kpis').innerHTML = kpis.map(k => `
+    <div class="glass-panel rounded-lg p-3">
+      <div class="text-[9px] font-heavy text-slate-400">${k[0]}</div>
+      <div class="font-mono font-extrabold text-2xl ${k[3]}">${k[1]}</div>
+      <div class="text-[10px] font-mono text-slate-500">${k[2]}</div>
+    </div>`).join('');
+
+  const days = d.series.I.mean.map((_, i) => i);
+  const I = d.series.I;
+  new Chart(document.getElementById('chart-i'), {
+    type: 'line',
+    data: { labels: days, datasets: [
+      { label: 'P95', data: I.p95, borderColor: 'rgba(239,68,68,0.35)', borderDash: [4,3], pointRadius: 0, fill: false },
+      { label: 'P75', data: I.p75, borderColor: 'rgba(239,68,68,0.15)', backgroundColor: 'rgba(239,68,68,0.10)', pointRadius: 0, fill: '+1' },
+      { label: 'P25', data: I.p25, borderColor: 'rgba(239,68,68,0.15)', pointRadius: 0, fill: false },
+      { label: 'P5',  data: I.p5,  borderColor: 'rgba(239,68,68,0.35)', borderDash: [4,3], pointRadius: 0, fill: false },
+      { label: 'Promedio', data: I.mean, borderColor: COLORS.I, borderWidth: 2.5, pointRadius: 0, fill: false },
+    ]},
+    options: { plugins: { legend: { labels: { boxWidth: 10 } } }, scales: { x: { title: { display: true, text: 'Día' } } } }
+  });
+
+  new Chart(document.getElementById('chart-seir'), {
+    type: 'line',
+    data: { labels: days, datasets: ['S','E','I','R'].map(k => ({
+      label: {S:'Sanos',E:'Mordidos',I:'Zombis',R:'Curados/Inmunes'}[k],
+      data: d.series[k].mean, borderColor: COLORS[k], pointRadius: 0, borderWidth: 2, fill: false })) },
+    options: { scales: { y: { type: 'logarithmic', min: 1 }, x: { title: { display: true, text: 'Día' } } } }
+  });
+
+  const h = d.histogram.peakInfected;
+  new Chart(document.getElementById('chart-hist'), {
+    type: 'bar',
+    data: { labels: h.counts.map((_, i) => `${fmt(h.edges[i])}–${fmt(h.edges[i+1])}`),
+            datasets: [{ label: 'Corridas', data: h.counts, backgroundColor: 'rgba(239,68,68,0.6)' }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 60, font: { size: 9 } } } } }
+  });
+
+  const p = d.meta.params;
+  const rows = [
+    ['Escenario', p.currentScenario], ['Epicentro', p.activeEpicenter],
+    ['Población', fmt(p.totalPop)], ['Inmunidad natural', (p.immunityRate*100).toFixed(0)+'%'],
+    ['Personas armadas', p.armedCount], ['Munición', p.ammo], ['Cajas de antídoto', p.cureCrates],
+    ['Incubación', p.incubationSeconds + ' s'], ['R0', p.r0],
+    ['Carnaval / Noche / Cerco', [p.isCarnaval, p.isNight, p.cercoVial].map(b => b ? 'ON' : 'OFF').join(' / ')],
+  ];
+  document.getElementById('params-table').innerHTML = rows.map(r =>
+    `<tr class="border-b border-slate-800"><td class="py-1 text-slate-400">${r[0]}</td><td class="py-1 text-right text-white">${r[1]}</td></tr>`).join('');
+
+  const names = { peakInfected:'Pico de zombis', peakDay:'Día del pico', finalInfected:'Zombis finales',
+    totalAttacked:'Afectados totales', zombiesKilled:'Zombis abatidos', ammoLeft:'Munición restante' };
+  document.getElementById('summary-table').innerHTML =
+    '<tr class="text-slate-400 border-b border-slate-700"><th class="text-left py-1">Métrica</th><th>Promedio</th><th>Desv. est.</th><th>Mín</th><th>P5</th><th>P95</th><th>Máx</th></tr>' +
+    Object.keys(names).map(k => { const x = s[k];
+      return `<tr class="border-b border-slate-800"><td class="text-left py-1">${names[k]}</td><td class="text-amber-300">${fmt(x.mean)}</td><td>${fmt(x.std)}</td><td>${fmt(x.min)}</td><td>${fmt(x.p5)}</td><td>${fmt(x.p95)}</td><td>${fmt(x.max)}</td></tr>`; }).join('');
+}
+poll();
+</script>
+</body>
+</html>

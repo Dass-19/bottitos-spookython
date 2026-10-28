@@ -2,6 +2,59 @@
    ARCADE TACTICAL COMMAND CENTER - CLEAN & HARMONIOUS
    ========================================================================== */
 
+/* Tactical HUD Chips (High Intuition, Ultra-Readable) */
+.hud-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.5rem;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.hud-chip:hover {
+  transform: translateY(-1px);
+}
+
+/* Collapsible Tactical Dock (Right Panel) */
+#tactical-dock {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease,
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width, opacity;
+  width: 320px;
+}
+#tactical-dock.dock-collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+/* Collapsible Bottom Control Bar */
+#bottom-control-dock {
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              padding 0.3s ease;
+  will-change: max-height, opacity;
+  max-height: 50px;
+}
+#bottom-control-dock.bar-collapsed {
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-top-width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 4px;
