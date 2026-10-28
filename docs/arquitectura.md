@@ -40,6 +40,16 @@ graph LR
 | IAM | `ecsTaskExecutionRole`: lectura de ECR y escritura de logs. |
 | Datos | Ninguna base de datos; todo el estado vive en memoria del proceso. |
 
+### Ruta de una petición
+
+1. El navegador abre `https://d25jz4tlj2zdm.cloudfront.net/...`. CloudFront termina TLS con su certificado por defecto (`*.cloudfront.net`); si la petición llega por HTTP, responde 301 a HTTPS.
+2. Con `CachingDisabled`, cada petición va al origen. `AllViewerExceptHostHeader` reenvía query string, headers y cookies, salvo `Host`, para que el ALB reciba su propio hostname.
+3. CloudFront se conecta al ALB por HTTP :80 (`http-only`, read timeout 30 s, 3 intentos).
+4. El ALB enruta al target del servicio `maintazero-service` en el puerto :8080 del contenedor.
+5. FastAPI responde: estáticos desde `frontend/` o JSON desde `/api/*`.
+
+Como no hay caché, el polling de `/api/montecarlo/status` y los `tick` siempre devuelven el estado vivo.
+
 ### Estado en producción
 
 - `maintazero-service` → `mantazero:4`: servicio actual, detrás del ALB.

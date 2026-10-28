@@ -162,7 +162,16 @@ Detalle en [docs/arquitectura.md](docs/arquitectura.md). El diagrama completo y 
 | Simulación | `SeirSimulationEngine` (estado en vivo), `MonteCarloRunner` (NumPy en hilo de fondo) |
 | Infraestructura | CloudFront → ALB → ECS Fargate, ECR, CloudWatch Logs, IAM `ecsTaskExecutionRole` |
 
-Exposición: CloudFront termina TLS en :443 y reenvía por HTTP al ALB en :80, que a su vez llega al contenedor en :8080. Sin base de datos.
+```mermaid
+graph LR
+    U["🧟 Usuario"] -->|"HTTPS :443"| CF["CloudFront<br/>d25jz4tlj2zdm.cloudfront.net<br/>TLS · sin caché"]
+    CF -->|"HTTP :80"| ALB["ALB<br/>mantazero-alb"]
+    ALB -->|":8080"| T["ECS Fargate<br/>maintazero-service<br/>FastAPI + SEIR + Monte Carlo"]
+    ECR["ECR"] -.->|"imagen"| T
+    T -.->|"logs"| CW["CloudWatch"]
+```
+
+Exposición: CloudFront termina TLS en :443 y reenvía por HTTP al ALB en :80, que a su vez llega al contenedor en :8080. La caché está desactivada (`CachingDisabled`) y se reenvían todos los métodos y headers salvo `Host`, así que la API responde igual que sin CDN. Sin base de datos.
 
 ---
 
