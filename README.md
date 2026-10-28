@@ -2,30 +2,31 @@
 ### Simulación Epidemiológica SEIR Estocástica + Intervención Táctica en Manta
 **Spookython 2026 · Track B: La Plaga Zombie**
 
-[![AWS ECS Fargate](https://img.shields.io/badge/AWS-ECS%20Fargate%20(us--east--1)-FF9900?style=flat-square&logo=amazon-aws)](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)
+[![AWS ECS Fargate](https://img.shields.io/badge/AWS-ECS%20Fargate%20(us--east--1)-FF9900?style=flat-square&logo=amazon-aws)](https://d25jz4tlj2zdm.cloudfront.net/)
 [![Python](https://img.shields.io/badge/Python-3.14-blue?style=flat-square&logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![NumPy](https://img.shields.io/badge/NumPy-SEIR%20Vectorizado-013243?style=flat-square&logo=numpy)](https://numpy.org/)
-[![Reproducible](https://img.shields.io/badge/Reproducibilidad-Seed%2042-success?style=flat-square)](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)
+[![Reproducible](https://img.shields.io/badge/Reproducibilidad-Seed%2042-success?style=flat-square)](https://d25jz4tlj2zdm.cloudfront.net/)
 [![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](LICENSE)
 
 ---
 
-## 🌐 Despliegue Activo en AWS (URL Pública)
+## 🌐 Despliegue Activo en AWS (URL Pública HTTPS)
 
-> 🚀 **Aplicación Desplegada y Operativa:**  
-> **URL Pública:** **[http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)**  
-> **DNS Público AWS (ALB):** **[http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/)**  
-> **Dashboard Monte Carlo:** **[http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/montecarlo](http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/montecarlo)**  
-> **API Healthcheck:** `GET http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/api/health`
+> 🚀 **Aplicación Desplegada y Operativa con Certificado SSL/TLS:**  
+> **URL Pública Oficial (HTTPS):** **[https://d25jz4tlj2zdm.cloudfront.net/](https://d25jz4tlj2zdm.cloudfront.net/)**  
+> **Dashboard Monte Carlo:** **[https://d25jz4tlj2zdm.cloudfront.net/montecarlo](https://d25jz4tlj2zdm.cloudfront.net/montecarlo)**  
+> **API Healthcheck:** `GET https://d25jz4tlj2zdm.cloudfront.net/api/health`  
+> *(Origen Load Balancer: `http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/`)*
 
 ### Detalles de la Infraestructura en AWS
+- **CDN / SSL:** **Amazon CloudFront** (`d25jz4tlj2zdm.cloudfront.net`) con certificado SSL/TLS de Amazon y redirección automática HTTP → HTTPS.
+- **Load Balancer (ALB):** Application Load Balancer (`mantazero-alb-994615840.us-east-1.elb.amazonaws.com`) en puerto 80.
 - **Plataforma:** AWS ECS (Elastic Container Service) con tipo de lanzamiento **AWS FARGATE** (Serverless).
 - **Región:** `us-east-1` (N. Virginia).
 - **Cluster:** `mantazero-cluster`
 - **Servicio:** `maintazero-service`
 - **Definición de Tarea:** `mantazero:4` (0.25 vCPU, 512 MB RAM, Healthcheck startPeriod=30s).
-- **Load Balancer (ALB):** `mantazero-alb-994615840.us-east-1.elb.amazonaws.com` (Puerto `80`)
 - **Repositorio ECR:** `028610956449.dkr.ecr.us-east-1.amazonaws.com/mantazero`
 - **Monitoreo & Logs:** Amazon CloudWatch (`/ecs/mantazero`).
 
@@ -122,13 +123,13 @@ El sistema evalúa el beneficio neto de la **Estrategia Propuesta** frente a las
 
 ### Prueba de Reproducibilidad vía cURL
 ```bash
-# Paso 1: Lanzar simulación con semilla fija 42
-curl -X POST http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/api/sim/launch \
+# Paso 1: Lanzar simulación con semilla fija 42 (HTTPS)
+curl -X POST https://d25jz4tlj2zdm.cloudfront.net/api/sim/launch \
   -H "Content-Type: application/json" \
   -d '{"mcSeed": 42, "mcRuns": 400, "epicenter": "Tarqui", "r0": 2.35, "ammo": 800, "cureCrates": 3}'
 
 # Paso 2: Consultar resultados una vez completado
-curl http://mantazero-alb-994615840.us-east-1.elb.amazonaws.com/api/montecarlo/results
+curl https://d25jz4tlj2zdm.cloudfront.net/api/montecarlo/results
 ```
 *Al repetir esta petición con la semilla 42, la media de infectados, desviación estándar y percentiles coincidirán bit a bit.*
 

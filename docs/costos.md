@@ -64,7 +64,15 @@ Subtotal Fargate Mensual: $8.8866 ≈ $8.89 USD/mes
 
 ---
 
-### D. Transferencia de Red (Data Transfer Out)
+### D. Amazon CloudFront (Distribución CDN & Certificado SSL/TLS HTTPS)
+- Dominio: `d25jz4tlj2zdm.cloudfront.net`
+- Redirección automática HTTP a HTTPS y terminación TLS con certificado de Amazon.
+- **AWS Free Tier (Always Free):** 1 TB de transferencia de datos de salida hacia Internet y 10,000,000 de peticiones HTTP/HTTPS al mes **completamente gratuitas**.
+- **Costo evento y mensual:** **$0.00 USD**.
+
+---
+
+### E. Transferencia de Red (Data Transfer Out)
 - Tamaño de bundle frontend + respuestas JSON: ~1.5 MB por sesión de usuario.
 - Tráfico durante pruebas y evaluación (100 sesiones): ~150 MB.
 - **Costo transferencia:** Primeros 100 GB/mes de salida a Internet son **completamente gratuitos** en AWS.
@@ -72,13 +80,14 @@ Subtotal Fargate Mensual: $8.8866 ≈ $8.89 USD/mes
 
 ---
 
-### 📋 Total Consolidado Despliegue Actual (ECS Fargate)
+### 📋 Total Consolidado Despliegue Actual (ECS Fargate + CloudFront)
 
 | Componente | Tarifa Unitaria (`us-east-1`) | Costo Evento (48h) | Costo Operativo Mensual |
 | :--- | :--- | :---: | :---: |
 | **ECS Fargate Task (0.25 vCPU / 0.5 GB)** | $0.01234 / hora | $0.59 USD | $8.89 USD |
 | **Amazon ECR (200 MB imagen)** | $0.10 / GB-mes | $0.01 USD | $0.02 USD |
 | **CloudWatch Logs (`/ecs/mantazero`)** | $0.50 / GB ingesta | $0.03 USD | $0.50 USD |
+| **Amazon CloudFront (HTTPS / SSL)** | 1 TB / 10M peticiones | $0.00 USD (Always Free) | $0.00 USD |
 | **Data Transfer Out (VPC a Internet)** | $0.09 / GB (post 100 GB) | $0.00 USD (Free Tier) | $0.00 USD |
 | **TOTAL GENERAL** | | **$0.63 USD** | **$9.41 USD** |
 

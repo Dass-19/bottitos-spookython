@@ -15,12 +15,15 @@ graph TB
     end
 
     subgraph AWSCloud["☁️ AWS Cloud (Región us-east-1)"]
+        CF["⚡ Amazon CloudFront (CDN + SSL/TLS)<br/>d25jz4tlj2zdm.cloudfront.net<br/>Puerto 443 (HTTPS Seguro)"]
+        ALB["⚖️ Application Load Balancer (ALB)<br/>mantazero-alb-994615840.us-east-1.elb.amazonaws.com<br/>Puerto 80 (HTTP Origin)"]
+
         subgraph VPC["Amazon VPC (172.31.0.0/16)"]
             subgraph PublicSubnet["Subred Pública (subnet-0330e33fb231d099d)"]
-                SG["🛡️ Security Group (sg-0f28593e6c8063193)<br/>Inbound: TCP 8080 [0.0.0.0/0]<br/>Outbound: Todo el tráfico permitido"]
+                SG["🛡️ Security Group (mantazero-sg)<br/>Inbound: TCP 8080<br/>Outbound: Todo el tráfico permitido"]
                 
                 subgraph ECSCluster["Amazon ECS Cluster: mantazero-cluster"]
-                    subgraph FargateTask["Tarea Fargate: mantazero:4<br/>0.25 vCPU / 512 MB RAM<br/>IP Pública Asignada: 3.228.0.232:8080"]
+                    subgraph FargateTask["Tarea Fargate: mantazero:4<br/>0.25 vCPU / 512 MB RAM"]
                         direction TB
                         Container["🐳 Contenedor Docker (python:3.14-slim)"]
                         FastAPI["⚡ Servidor Uvicorn / FastAPI (Puerto 8080)"]
@@ -46,8 +49,10 @@ graph TB
     end
 
     %% Conexiones y flujo
-    User -->|"1. Petición HTTP /api/* o frontend (PÚBLICO)"| SG
-    SG -->|"2. Tráfico enrutado al contenedor"| FargateTask
+    User -->|"1. HTTPS / 443 (Certificado SSL/TLS)"| CF
+    CF -->|"2. Reenvío HTTP al Origin ALB"| ALB
+    ALB -->|"3. Tráfico balanceado a Fargate"| SG
+    SG -->|"4. Acceso al contenedor (Puerto 8080)"| FargateTask
     IAM -.->|"Autorización y políticas mínimas"| FargateTask
     ECR -->|"Descarga inicial de imagen Docker"| Container
     FastAPI -->|"Envío de telemetría y logs stdout/stderr"| CW
