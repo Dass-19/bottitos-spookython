@@ -1,7 +1,7 @@
 # Reporte de Organización de Archivos No Desplegados
 
 ## Fecha
-2026-10-28 02:19:33
+2026-10-28 02:19:20
 
 ## Resumen
 Se han movido los siguientes archivos y directorios que NO se utilizan en el despliegue ECS/Fargate al directorio 'no_desplegado':
@@ -23,7 +23,7 @@ Se han movido los siguientes archivos y directorios que NO se utilizan en el des
 
 ## Contenido de 'no_desplegado' (después de la reorganización)
 ### Directorios
-- .agents/skills/ - Skills de agentes
+- .agents/skills/ - Skillsde agentes
 - .agents/tasks/ - Tareas de agentes
 - .aos/ - Configuración AOS completa
 - .ebextensions/ - Configuración Elastic Beanstalk (abandonada)
