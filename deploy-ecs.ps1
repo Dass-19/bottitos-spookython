@@ -307,7 +307,7 @@ Detalles Técnicos
 =================
 Cluster:            $CLUSTER_NAME
 Service:            $SERVICE_NAME
-Task Definition:    $TASK_FAMILY:$TASK_REVISION
+Task Definition:    ${TASK_FAMILY}:${TASK_REVISION}
 Region:             $REGION
 Account ID:         $ACCOUNT_ID
 Public IP:          $PUBLIC_IP

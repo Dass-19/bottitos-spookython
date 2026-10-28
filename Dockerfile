@@ -21,4 +21,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/health')"
 
 # Ejecutar
-CMD ["python", "backend/main.py"]
+CMD ["python", "-m", "backend.main"]
