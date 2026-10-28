@@ -20,13 +20,13 @@
   <script src="js/tailwind-config.js"></script>
 
   <!-- Arcade & Tactical Stylesheet -->
-  <link rel="stylesheet" href="css/arcade.css"/>
+  <link rel="stylesheet" href="css/arcade.css?v=20261027_fixed_engine"/>
 
   <!-- Modular Scripts -->
-  <script src="assets/manta_routes.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/manta-config.js"></script>
-  <script src="js/sprites.js"></script>
+  <script src="assets/manta_routes.js?v=20261027_fixed_engine"></script>
+  <script src="js/audio.js?v=20261027_fixed_engine"></script>
+  <script src="js/manta-config.js?v=20261027_fixed_engine"></script>
+  <script src="js/sprites.js?v=20261027_fixed_engine"></script>
 </head>
 
 <body class="bg-[#080c10] text-slate-100 font-tactical text-xs select-none h-screen flex flex-col p-1.5 sm:p-2 overflow-hidden">
@@ -59,6 +59,18 @@
             🧪 ANTÍDOTO (R0: 0.7)
           </button>
         </div>
+
+        <!-- Roster Showcase Button (Spookython 2026) -->
+        <button class="btn-arcade-gold px-2.5 py-1 rounded text-[9px] font-heavy flex items-center gap-1 cursor-pointer shadow-lg" onclick="openMetalSlugShowcase(); SFX.button();" title="Ver Enciclopedia de Personajes y los 4 Estados SEIR">
+          <span class="material-symbols-outlined text-xs">group</span>
+          <span>PERSONAJES SEIR (4 ESTADOS)</span>
+        </button>
+
+        <!-- Focus Camera Button -->
+        <button class="btn-arcade-green px-2.5 py-1 rounded text-[9px] font-heavy flex items-center gap-1 cursor-pointer shadow-lg animate-pulse" onclick="zoomToCombat(); SFX.button();" title="Enfocar cámara directamente a los personajes en el mapa">
+          <span class="material-symbols-outlined text-xs">center_focus_strong</span>
+          <span>ENFOCAR EN EL MAPA (17X)</span>
+        </button>
       </div>
 
       <!-- Quick Telemetry Pills (Integrated & Harmonious) -->
@@ -194,7 +206,10 @@
         <!-- Day/Night Ambient Filter -->
         <div class="absolute inset-0 pointer-events-none z-20 transition-colors duration-700 bg-transparent" id="ambient-tint-layer"></div>
 
-        <!-- HTML5 CANVAS FOR METAL SLUG SPRITES -->
+        <!-- SPOOKYTHON AUTHENTIC ANIMATED GIF DOM SPRITE LAYER -->
+        <div class="absolute inset-0 w-full h-full pointer-events-none overflow-hidden" id="agent-dom-layer" style="z-index: 28;"></div>
+
+        <!-- HTML5 CANVAS FOR METAL SLUG VFX & PARTICLES -->
         <canvas class="absolute inset-0 w-full h-full pointer-events-none z-30" id="agent-canvas"></canvas>
 
         <!-- SVG FOR SLUG SUPPLY CRATE PARACHUTE AIRDROP -->
@@ -275,23 +290,23 @@
           </div>
         </div>
 
-        <!-- FLOATING TOP-RIGHT LEGEND PILL -->
-        <div class="absolute top-2 right-2 bg-black/85 backdrop-blur border border-slate-800 px-2 py-0.5 rounded z-30 flex items-center gap-2 font-heavy text-[9px] shadow-lg">
-          <div class="flex items-center gap-1 text-emerald-400">
+        <!-- FLOATING TOP-RIGHT LEGEND PILL (SPOOKYTHON SEIR MODEL) -->
+        <div class="absolute top-2 right-2 bg-black/90 backdrop-blur border border-slate-700/80 px-2.5 py-1 rounded z-30 flex items-center gap-2.5 font-heavy text-[9px] shadow-xl">
+          <div class="flex items-center gap-1 text-emerald-400" title="Sano: Soldadito civil saludando">
             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            HUMANO
+            SANO (S)
           </div>
-          <div class="flex items-center gap-1 text-amber-400">
+          <div class="flex items-center gap-1 text-amber-400" title="Mordido: Pálido, temblando con sudor frío y mordida">
             <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-            MORDIDO
+            MORDIDO (E)
           </div>
-          <div class="flex items-center gap-1 text-red-400">
-            <span class="w-2 h-2 rounded-full bg-red-500"></span>
-            ZOMBI
+          <div class="flex items-center gap-1 text-red-400" title="Zombie: Camina arrastrando los pies con costillas expuestas">
+            <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+            ZOMBIE (I)
           </div>
-          <div class="flex items-center gap-1 text-yellow-400">
+          <div class="flex items-center gap-1 text-yellow-400" title="Exorcizado: Flota con aureola y destellos divinos">
             <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
-            INMUNE
+            EXORCIZADO (R)
           </div>
         </div>
 
@@ -301,7 +316,7 @@
         </div>
 
         <!-- PRE-SIMULATION PARAMETER MODAL (CLEAN & MINIMALIST) -->
-        <div id="pre-sim-panel" class="absolute inset-4 z-40 bg-[#0c1218]/95 backdrop-blur-md border border-amber-500/60 p-4 rounded-lg shadow-2xl flex flex-col justify-between overflow-y-auto">
+        <div id="pre-sim-panel" class="absolute inset-4 z-40 bg-[#0c1218]/95 backdrop-blur-md border border-amber-500/60 p-4 rounded-lg shadow-2xl flex flex-col justify-between overflow-y-auto hidden">
           <div>
             <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
               <div class="flex items-center gap-2">
@@ -397,11 +412,12 @@
             </div>
           </div>
 
-          <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
-            <span class="text-slate-400 font-mono text-[9px]">
-              * La simulación parte desde 0 con la animación del Paciente Cero mutando en Manta.
-            </span>
-            <button class="btn-arcade-gold px-5 py-2 rounded text-[11px] flex items-center gap-1.5 cursor-pointer" onclick="confirmAndLaunchOutbreak(); SFX.alarm();">
+          <div class="pt-3 border-t border-slate-800 flex flex-wrap justify-between items-center gap-2">
+            <button class="btn-arcade-dark px-3 py-1.5 rounded text-[10px] flex items-center gap-1.5 text-amber-300 border border-amber-500/50 hover:bg-white/5 cursor-pointer" onclick="openMetalSlugShowcase(); SFX.button();">
+              <span class="material-symbols-outlined text-sm text-amber-400">visibility</span>
+              <span>VER ROSTER METAL SLUG (4 ESTADOS)</span>
+            </button>
+            <button class="btn-arcade-gold px-5 py-2 rounded text-[11px] flex items-center gap-1.5 cursor-pointer shadow-lg" onclick="confirmAndLaunchOutbreak(); SFX.alarm();">
               <span class="material-symbols-outlined text-sm">coronavirus</span>
               <span>INICIAR SIMULACIÓN DESDE CERO</span>
             </button>
@@ -424,14 +440,22 @@
             <button class="btn-arcade-dark px-1.5 py-0.2 text-[9px] rounded text-slate-400 cursor-pointer" id="spd-btn-4" onclick="setSpeed(4); SFX.button();">4X 🚀</button>
           </div>
 
-          <!-- Zoom shortcuts -->
-          <button class="btn-arcade-gold px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer" onclick="zoomToCombat(); SFX.button();" title="Enfocar punto de combate">
+          <!-- Zoom & Test shortcuts -->
+          <button class="btn-arcade-gold px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer" onclick="zoomToCombat(); SFX.button();" title="Enfocar punto de combate a 17X">
             <span class="material-symbols-outlined text-xs">center_focus_strong</span>
-            <span>ENFOCAR COMBATE (17X)</span>
+            <span>ENFOCAR (17X)</span>
+          </button>
+          <button class="btn-arcade-red px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer" onclick="spawnTestZombie(); SFX.button();" title="Crear Zombi con Vómito de Sangre y Enfocar">
+            <span class="material-symbols-outlined text-xs">coronavirus</span>
+            <span>PROBAR ZOMBI</span>
+          </button>
+          <button class="btn-arcade-green px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer" onclick="spawnTestImmune(); SFX.button();" title="Crear Inmune Hazmat con Botiquín">
+            <span class="material-symbols-outlined text-xs">medical_services</span>
+            <span>PROBAR INMUNE</span>
           </button>
           <button class="btn-arcade-dark px-2 py-0.5 text-[9px] rounded flex items-center gap-1 cursor-pointer" onclick="centerManta(); SFX.button();" title="Volver al mapa general">
             <span class="material-symbols-outlined text-xs">zoom_out_map</span>
-            <span>VISTA GENERAL (13X)</span>
+            <span>VISTA (13X)</span>
           </button>
         </div>
 
@@ -649,6 +673,143 @@
     </div>
   </main>
 
+  <!-- 3. INTERACTIVE SPOOKYTHON SHOWCASE MODAL -->
+  <div id="metal-slug-showcase" class="fixed inset-2 sm:inset-6 z-50 bg-[#090d12]/95 backdrop-blur-md border border-amber-500/70 rounded-xl shadow-2xl flex flex-col overflow-hidden hidden">
+    <!-- Header -->
+    <div class="bg-black/90 px-4 py-2.5 border-b border-amber-500/50 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5">
+        <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
+        <div>
+          <h2 class="arcade-title text-sm sm:text-base text-yellow-300 tracking-wider">
+            ENCICLOPEDIA // LA PLAGA ZOMBIE — SPOOKYTHON 2026 (TRACK B)
+          </h2>
+          <span class="text-[9px] text-slate-400 font-mono">
+            Personajes originales pixel art 32x40 diseñados específicamente para los 4 estados del modelo SEIR
+          </span>
+        </div>
+      </div>
+      <button class="px-2.5 py-1 text-slate-400 hover:text-white bg-slate-800/80 rounded border border-slate-700 text-xs font-mono cursor-pointer" onclick="closeMetalSlugShowcase();">✕ CERRAR</button>
+    </div>
+
+    <!-- Main Content: Character Selector Bar + 4 States Grid -->
+    <div class="flex-1 min-h-0 flex flex-col p-3 overflow-y-auto gap-3">
+      <!-- Character Tabs Header -->
+      <div class="flex items-center gap-1.5 shrink-0 bg-black/60 p-1 rounded-lg border border-slate-800" id="showcase-character-tabs"></div>
+
+      <!-- Banner Estados Preview GIF (Spookython 2026 Track B) -->
+      <div class="bg-black/80 border border-amber-500/40 rounded-lg p-2 flex flex-col items-center justify-center gap-1 shrink-0">
+        <div class="flex items-center justify-between w-full px-2">
+          <span class="text-[9px] font-heavy text-amber-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            VISTA PREVIA INTEGRAL DE ESTADOS SEIR // SPOOKYTHON 2026 (TRACK B)
+          </span>
+          <span class="text-[8px] font-mono text-slate-400">Alta Definicion HD: 48x56 @ 5x (240x280) • 36 Colores • Bucles de 6 Frames</span>
+        </div>
+        <img src="assets/sprites/estados_preview.gif" alt="Estados SEIR Preview" class="pixelated h-20 sm:h-24 object-contain rounded border border-slate-800 bg-[#060a0e] w-full" />
+      </div>
+
+      <!-- 4 Columns Grid: Sano, Mordido, Zombie, Exorcizado -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 flex-1 min-h-0">
+        <!-- Card 1: Sano -->
+        <div class="bg-black/70 border border-emerald-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
+          <div class="w-full flex items-center justify-between border-b border-emerald-950 pb-1 mb-2">
+            <span class="font-heavy text-emerald-400 text-[10px]">1. SANO (S)</span>
+            <span class="text-[8px] font-mono px-1.5 py-0.2 bg-emerald-950 text-emerald-300 rounded border border-emerald-600/50">SUSCEPTIBLE</span>
+          </div>
+          <div class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
+            <img id="showcase-img-human" src="assets/sprites/sano.gif" alt="Sano" class="pixelated h-28 object-contain drop-shadow-md" />
+          </div>
+          <p id="showcase-desc-human" class="text-[9px] text-slate-300 mt-2 leading-tight">
+            Soldadito civil en posición firme saludando con pañuelo rojo ondeando y gorra de campaña.
+          </p>
+          <a href="assets/sprites/sano_sheet.png" target="_blank" class="mt-2 w-full py-1 bg-emerald-950/80 border border-emerald-600/60 text-emerald-300 text-[9px] font-heavy rounded hover:bg-emerald-900 cursor-pointer text-center block">
+            📄 HOJA HD (6 FRAMES)
+          </a>
+        </div>
+
+        <!-- Card 2: Mordido -->
+        <div class="bg-black/70 border border-amber-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
+          <div class="w-full flex items-center justify-between border-b border-amber-950 pb-1 mb-2">
+            <span class="font-heavy text-amber-400 text-[10px]">2. MORDIDO (E)</span>
+            <span class="text-[8px] font-mono px-1.5 py-0.2 bg-amber-950 text-amber-300 rounded border border-amber-600/50">INCUBANDO</span>
+          </div>
+          <div class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
+            <img id="showcase-img-bitten" src="assets/sprites/mordido.gif" alt="Mordido" class="pixelated h-28 object-contain agent-bitten" />
+            <div class="absolute bottom-1 bg-amber-950/90 border border-amber-500/60 px-2 py-0.5 rounded text-[8px] font-mono text-amber-300">
+              VIRUS Z: INCUBANDO...
+            </div>
+          </div>
+          <p id="showcase-desc-bitten" class="text-[9px] text-slate-300 mt-2 leading-tight">
+            Convulsionando con sudor frío, marcas de mordedura viva, sangre goteando y red de venas infectadas.
+          </p>
+          <a href="assets/sprites/mordido_sheet.png" target="_blank" class="mt-2 w-full py-1 bg-amber-950/80 border border-amber-600/60 text-amber-300 text-[9px] font-heavy rounded hover:bg-amber-900 cursor-pointer text-center block">
+            📄 HOJA HD (6 FRAMES)
+          </a>
+        </div>
+
+        <!-- Card 3: Zombie -->
+        <div class="bg-black/70 border border-red-500/60 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
+          <div class="w-full flex items-center justify-between border-b border-red-950 pb-1 mb-2">
+            <span class="font-heavy text-red-400 text-[10px]">3. ZOMBIE (I)</span>
+            <span class="text-[8px] font-mono px-1.5 py-0.2 bg-red-950 text-red-300 rounded border border-red-600/50 animate-pulse">INFECTADO</span>
+          </div>
+          <div class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
+            <img id="showcase-img-zombie" src="assets/sprites/zombie.gif" alt="Zombie" class="pixelated h-28 object-contain agent-infected" />
+            <div id="showcase-vomit-banner" class="hidden absolute top-2 right-2 px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-heavy rounded animate-bounce">
+              ¡ATAQUE ZOMBIE!
+            </div>
+          </div>
+          <p id="showcase-desc-zombie" class="text-[9px] text-slate-300 mt-2 leading-tight">
+            Paso lisiado de marcha voraz, 3 costillas expuestas con sangre coagulada, mandíbula desencajada y garras extendidas.
+          </p>
+          <div class="mt-2 flex flex-col gap-1 w-full">
+            <button class="w-full py-1 bg-red-950/80 border border-red-600/60 text-red-300 text-[9px] font-heavy rounded hover:bg-red-900 cursor-pointer" onclick="testShowcaseBloodVomit();">
+              🧟 ACTIVAR ATAQUE ZOMBIE
+            </button>
+            <a href="assets/sprites/zombie_sheet.png" target="_blank" class="w-full py-0.5 bg-slate-900/80 border border-slate-700 text-slate-300 text-[8px] font-mono rounded hover:text-white cursor-pointer text-center block">
+              📄 HOJA HD (6 FRAMES)
+            </a>
+          </div>
+        </div>
+
+        <!-- Card 4: Exorcizado -->
+        <div class="bg-black/70 border border-yellow-500/50 rounded-lg p-2.5 flex flex-col justify-between items-center text-center shadow-lg">
+          <div class="w-full flex items-center justify-between border-b border-yellow-950 pb-1 mb-2">
+            <span class="font-heavy text-yellow-400 text-[10px]">4. EXORCIZADO (R)</span>
+            <span class="text-[8px] font-mono px-1.5 py-0.2 bg-yellow-950 text-yellow-300 rounded border border-yellow-600/50">RECUPERADO</span>
+          </div>
+          <div class="relative w-full h-36 flex items-center justify-center bg-[#070b0e] border border-slate-800 rounded overflow-hidden">
+            <img id="showcase-img-immune" src="assets/sprites/exorcizado.gif" alt="Exorcizado" class="pixelated h-28 object-contain agent-immune" />
+          </div>
+          <p id="showcase-desc-immune" class="text-[9px] text-slate-300 mt-2 leading-tight">
+            Flotación senoidal en túnica astral con pliegues etéreos, aureola dorada de 4 rayos y estrellas de bendición sagrada.
+          </p>
+          <div class="mt-2 flex flex-col gap-1 w-full">
+            <button class="w-full py-1 bg-yellow-950/80 border border-yellow-600/60 text-yellow-300 text-[9px] font-heavy rounded hover:bg-yellow-900 cursor-pointer" onclick="testShowcaseImmuneShield();">
+              ✨ BENDICIÓN PURIFICADORA
+            </button>
+            <a href="assets/sprites/exorcizado_sheet.png" target="_blank" class="w-full py-0.5 bg-slate-900/80 border border-slate-700 text-slate-300 text-[8px] font-mono rounded hover:text-white cursor-pointer text-center block">
+              📄 HOJA HD (6 FRAMES)
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="bg-black/80 px-4 py-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <span class="text-slate-400 text-[9px] font-mono">
+        💡 En el mapa en vivo: Haz clic en "ENFOCAR (17X)" para ver estos micro-sprites en acción en las calles de Manta.
+      </span>
+      <div class="flex items-center gap-2">
+        <button class="btn-arcade-gold px-3 py-1 rounded text-[10px] flex items-center gap-1 cursor-pointer" onclick="closeMetalSlugShowcase(); zoomToCombat(); SFX.button();">
+          <span class="material-symbols-outlined text-xs">center_focus_strong</span>
+          <span>IR AL MAPA (ZOOM 17X)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar Tab Navigation Script -->
   <script>
     function switchSidebarTab(tabName) {
@@ -671,6 +832,6 @@
   </script>
 
   <!-- MAIN SIMULATION ENGINE -->
-  <script src="js/engine.js"></script>
+  <script src="js/engine.js?v=20261027_fixed_engine"></script>
 </body>
 </html>

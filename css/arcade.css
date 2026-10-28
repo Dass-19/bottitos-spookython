@@ -244,3 +244,59 @@
 .btn-slug-gold { @apply btn-arcade-gold; }
 .btn-slug-dark { @apply btn-arcade-dark; }
 .armor-plate { @apply glass-panel; }
+
+/* Metal Slug GIF Sprites Styling */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+#agent-dom-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 28 !important;
+  overflow: hidden;
+  display: block !important;
+}
+
+.slug-dom-agent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+.slug-dom-agent img {
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 4 States FX for GIF Sprites */
+.agent-bitten {
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.9)) sepia(0.2) saturate(1.6);
+  animation: slugShiver 0.12s infinite linear;
+}
+
+@keyframes slugShiver {
+  0% { margin-left: 0px; margin-top: 0px; }
+  25% { margin-left: 1.5px; margin-top: -1px; }
+  50% { margin-left: -1px; margin-top: 1.5px; }
+  75% { margin-left: -1.5px; margin-top: -0.5px; }
+  100% { margin-left: 1px; margin-top: 1px; }
+}
+
+.agent-immune {
+  filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.85));
+}
+
+.agent-infected {
+  filter: drop-shadow(0 0 5px rgba(220, 38, 38, 0.8));
+}

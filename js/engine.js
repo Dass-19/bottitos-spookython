@@ -10,7 +10,7 @@
 
   // Simulation Game State
   const state = {
-    hasStarted: false,
+    hasStarted: true,
     isTransforming: false,
     isRunning: true,
     speed: 1,
@@ -110,7 +110,7 @@
   // 1. INITIALIZE LEAFLET MAP
   const map = L.map('osm-map', {
     center: config.center,
-    zoom: 13,
+    zoom: 14,
     minZoom: 11,
     maxZoom: 18,
     zoomControl: true,
@@ -329,9 +329,36 @@
     }
   }
 
-  // 3. CANVAS SETUP & AGENT INITIALIZATION
+  // 3. CANVAS & METAL SLUG DOM SPRITE LAYER SETUP
   const canvas = document.getElementById('agent-canvas');
   const ctx = canvas.getContext('2d');
+  const domLayer = document.getElementById('agent-dom-layer');
+  const agentDoms = {};
+
+  // SEIR Model Sprites (Spookython 2026 Track B canonical sprites: Sano, Mordido, Zombie, Exorcizado)
+  const SHOWCASE_GIFS = {
+    spookython: {
+      name: '★ SPOOKYTHON (TRACK B)',
+      title: 'Personajes Canónicos SEIR (Sano, Mordido, Zombie, Exorcizado)',
+      human: 'assets/sprites/sano.gif',
+      bitten: 'assets/sprites/mordido.gif',
+      zombie: 'assets/sprites/zombie.gif',
+      immune: 'assets/sprites/exorcizado.gif',
+      descH: 'Soldadito civil saludando con pañuelo rojo y gorra militar.',
+      descB: 'Pálido y temblando con sudor frío, marcas de mordedura sangrante y ojo infectado.',
+      descZ: 'Camina arrastrando los pies con costillas expuestas, ropa rasgada y brazos al frente.',
+      descI: 'Exorcizado / Inmune: Flota en túnica astral con aureola divina y destellos sagrados.'
+    }
+  };
+
+  let activeShowcaseHero = 'spookython';
+
+  function getAgentGif(a) {
+    if (a.type === 'infected') return 'assets/sprites/zombie.gif';
+    if (a.type === 'bitten') return 'assets/sprites/mordido.gif';
+    if (a.type === 'immune') return 'assets/sprites/exorcizado.gif';
+    return 'assets/sprites/sano.gif';
+  }
 
   function resizeCanvas() {
     const rect = map.getContainer().getBoundingClientRect();
@@ -353,9 +380,11 @@
   function initAgents() {
     state.agents = [];
     state.particles = [];
+    if (domLayer) domLayer.innerHTML = '';
+    Object.keys(agentDoms).forEach(k => delete agentDoms[k]);
     const rKeys = Object.keys(config.routePairs);
     const count = state.agentCount;
-    const HERO_KEYS = ['marco', 'tarma', 'eri', 'fio', 'clark', 'ralf'];
+    const HERO_KEYS = ['marco', 'tarma', 'eri', 'fio', 'rebel', 'scientist', 'tarman'];
 
     for (let i = 0; i < count; i++) {
       const rKey = rKeys[Math.floor(Math.random() * rKeys.length)];
@@ -363,9 +392,21 @@
       const posMeters = Math.random() * rd.totalDist;
       const dir = Math.random() < 0.5 ? 1 : -1;
       
-      // Determine if naturally immune
-      const isImmune = (Math.random() < state.immunityRate);
-      const agentType = isImmune ? 'immune' : 'human';
+      // Distribute the 4 SEIR characters immediately on the map:
+      // Sano (S), Mordido (E), Zombie (I), Exorcizado (R)
+      let agentType = 'human';
+      let incubationTimer = 0;
+      if (i < 8) {
+        agentType = 'infected'; // Zombie (I)
+      } else if (i < 16) {
+        agentType = 'bitten';   // Mordido (E)
+        incubationTimer = (4 + Math.random() * 8) * 60;
+      } else if (i < 26) {
+        agentType = 'immune';   // Exorcizado / Inmune (R)
+      } else {
+        agentType = 'human';    // Sano (S)
+      }
+
       const heroId = HERO_KEYS[i % HERO_KEYS.length];
 
       state.agents.push({
@@ -375,14 +416,14 @@
         routeKey: rKey,
         posMeters: posMeters,
         dir: dir,
-        speedMps: 11.0 + Math.random() * 8.0,
+        speedMps: (agentType === 'infected' ? 8.0 : (agentType === 'bitten' ? 6.5 : 12.0)) + Math.random() * 4.0,
         lateralOffsetMeters: (Math.random() - 0.5) * 5.0,
         lat: 0,
         lng: 0,
         screenX: 0,
         screenY: 0,
         facing: 1,
-        incubationTimer: 0,
+        incubationTimer: incubationTimer,
         incubationMax: state.incubationSeconds * 60,
         glitchTimer: 0,
         animBob: Math.random() * Math.PI * 2,
@@ -394,18 +435,19 @@
         vomitCooldown: Math.floor(Math.random() * 20),
         isVomiting: false,
         cureTimer: 0,
-        isPatientZero: false
+        isPatientZero: (i === 0)
       });
     }
 
-    // Calculate initial counts
+    // Calculate initial counts for 4 SEIR states
+    state.infected = 8;
+    state.bitten = 8;
     const immCount = Math.round(state.totalPop * state.immunityRate);
     state.immune = immCount;
-    state.healthy = state.totalPop - immCount;
-    state.bitten = 0;
-    state.infected = 0;
+    state.healthy = state.totalPop - immCount - state.infected - state.bitten;
     state.recovered = 0;
     state.deaths = 0;
+    state.hasStarted = true;
     updateHUD();
   }
   initAgents();
@@ -798,11 +840,11 @@
                   a.isVomiting = true;
 
                   if (target.type === 'immune') {
-                    // DEFLECTED BY IMMUNITY!
+                    // DEFLECTED BY FIRST-AID IMMUNITY!
                     sfx.deflect();
                     state.particles.push({
                       type: 'text',
-                      text: '¡INMUNE!',
+                      text: '¡FIRST-AID IMMUNE!',
                       x: target.screenX,
                       y: target.screenY - 14,
                       color: '#facc15',
@@ -819,22 +861,23 @@
                     // Push zombie back
                     a.posMeters -= a.dir * 3.5;
                   } else {
-                    // BITTEN / ENTERS INCUBATION!
-                    for (let k = 0; k < 6; k++) {
+                    // BITTEN / ENTERS INCUBATION! (Metal Slug Blood Vomit Attack)
+                    sfx.bloodVomit();
+
+                    for (let k = 0; k < 8; k++) {
                       state.particles.push({
-                        type: 'bile',
+                        type: 'blood_stream',
                         x: a.screenX + a.facing * 5,
                         y: a.screenY - 3,
-                        vx: a.facing * (1.8 + Math.random() * 2.5),
-                        vy: -1.2 + Math.random() * 2.4,
-                        size: 2.2 + Math.random() * 2,
-                        color: (Math.random() < 0.6) ? '#84cc16' : '#dc2626',
+                        vx: a.facing * (2.2 + Math.random() * 3.2),
+                        vy: -1.6 - Math.random() * 2.0,
+                        size: 2.2 + Math.random() * 2.4,
+                        color: (Math.random() < 0.75) ? '#dc2626' : '#991b1b',
                         life: 1.0,
-                        decay: 0.06
+                        decay: 0.05
                       });
                     }
 
-                    sfx.zombieBite();
                     target.type = 'bitten';
                     target.incubationTimer = state.incubationSeconds * 60;
                     target.incubationMax = state.incubationSeconds * 60;
@@ -842,7 +885,7 @@
 
                     state.particles.push({
                       type: 'text',
-                      text: '¡MORDIDO!',
+                      text: '¡INCUBANDO VIRUS Z!',
                       x: target.screenX,
                       y: target.screenY - 14,
                       color: '#f59e0b',
@@ -863,26 +906,111 @@
       }
     }
 
-    // C. Render Agents
+    // C. Render Agents (Spookython 2026 High-Definition Animated GIFs)
+    if (domLayer) {
+      domLayer.style.display = 'block';
+    }
+
     for (let i = 0; i < state.agents.length; i++) {
       const a = state.agents[i];
-      if (a.screenX < -25 || a.screenX > canvas.width + 25 || a.screenY < -25 || a.screenY > canvas.height + 25) continue;
+      if (a.screenX < -60 || a.screenX > canvas.width + 60 || a.screenY < -60 || a.screenY > canvas.height + 60) {
+        if (agentDoms[a.id]) agentDoms[a.id].style.display = 'none';
+        continue;
+      }
 
       const incPct = (a.incubationMax > 0) ? (1 - (a.incubationTimer / a.incubationMax)) : 0;
 
-      if (currentZoom < 15) {
-        sprites.drawTacticalChibiHead(ctx, a.screenX, a.screenY, a.type, a.glitchTimer, a.animBob, incPct, a.heroId);
-      } else {
-        if (a.type === 'infected') {
-          sprites.drawZombieMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.isVomiting, a.alertTimer, a.glitchTimer, spriteScale, a.heroId);
-        } else if (a.type === 'bitten') {
-          sprites.drawBittenMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.alertTimer, a.glitchTimer, incPct, spriteScale, a.heroId);
-        } else if (a.type === 'immune') {
-          sprites.drawImmuneMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.isShooting, a.alertTimer, a.cureTimer, spriteScale, a.heroId);
-        } else {
-          sprites.drawSoldierMicroSprite(ctx, a.screenX, a.screenY, a.facing, a.animFrame, a.isShooting, a.alertTimer, a.cureTimer, spriteScale, (state.ammo > 0), a.heroId);
+      // Spookython Pixel Art Animated GIF Sprite
+      let dom = agentDoms[a.id];
+      const gifSrc = getAgentGif(a);
+      let cssClass = 'slug-dom-agent pixelated';
+      if (a.type === 'infected') cssClass += ' agent-infected';
+      else if (a.type === 'bitten') cssClass += ' agent-bitten';
+      else if (a.type === 'immune') cssClass += ' agent-immune';
+
+      if (!dom && domLayer) {
+        dom = document.createElement('div');
+        dom.className = cssClass;
+        dom.innerHTML = `<img src="${gifSrc}" class="pixelated" style="height: 40px; width: auto;" alt="${a.type}" />`;
+        domLayer.appendChild(dom);
+        agentDoms[a.id] = dom;
+        dom._lastSrc = gifSrc;
+        dom._lastType = a.type;
+      } else if (dom) {
+        dom.style.display = 'block';
+        if (dom._lastSrc !== gifSrc) {
+          const img = dom.querySelector('img');
+          if (img) img.src = gifSrc;
+          dom._lastSrc = gifSrc;
+        }
+        if (dom._lastType !== a.type) {
+          dom.className = cssClass;
+          dom._lastType = a.type;
         }
       }
+
+      if (dom) {
+        const flip = a.facing < 0 ? -1 : 1;
+        const scale = Math.min(1.6, Math.max(0.5, 0.85 + (currentZoom - 13) * 0.22));
+        dom.style.transform = `translate3d(${Math.round(a.screenX - 18)}px, ${Math.round(a.screenY - 38)}px, 0) scaleX(${flip}) scale(${scale})`;
+      }
+
+        // Canvas Overlays for Combat, Vomit & Meters:
+        if (a.isVomiting) {
+          // Iconic Metal Slug Blood Vomit Cannon Wave
+          ctx.save();
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(a.screenX + a.facing * 8, a.screenY - 14);
+          ctx.quadraticCurveTo(a.screenX + a.facing * 22, a.screenY - 26, a.screenX + a.facing * 34, a.screenY - 4);
+          ctx.stroke();
+
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(a.screenX + a.facing * 18, a.screenY - 22, 3, 3);
+          ctx.fillRect(a.screenX + a.facing * 26, a.screenY - 15, 3.5, 3.5);
+          ctx.fillRect(a.screenX + a.facing * 32, a.screenY - 6, 4, 4);
+
+          // Puddle
+          ctx.fillStyle = 'rgba(185, 28, 28, 0.7)';
+          ctx.beginPath();
+          ctx.ellipse(a.screenX + a.facing * 32, a.screenY, 5, 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        if (a.type === 'bitten') {
+          // Floating Incubation Gauge on canvas
+          ctx.save();
+          ctx.translate(Math.round(a.screenX), Math.round(a.screenY - 38));
+          ctx.fillStyle = '#0f172a';
+          ctx.strokeStyle = '#78350f';
+          ctx.lineWidth = 1;
+          ctx.fillRect(-12, -4, 24, 6);
+          ctx.strokeRect(-12, -4, 24, 6);
+
+          const barW = Math.max(0, Math.min(22, Math.round(22 * incPct)));
+          ctx.fillStyle = (incPct > 0.65) ? '#ef4444' : '#f59e0b';
+          ctx.fillRect(-11, -3, barW, 4);
+
+          ctx.fillStyle = '#fef08a';
+          ctx.font = 'bold 5px "Russo One", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('VIRUS Z', 0, -5);
+          ctx.restore();
+        }
+
+        if (a.cureTimer > 0) {
+          ctx.save();
+          ctx.translate(Math.round(a.screenX), Math.round(a.screenY - 42));
+          ctx.fillStyle = '#fef08a';
+          ctx.font = 'bold 8px "Russo One", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#000';
+          ctx.shadowBlur = 4;
+          ctx.fillText('THANK YOU!', 0, 0);
+          ctx.restore();
+        }
     }
 
     // D. Render Particles
@@ -1158,6 +1286,8 @@
 
     if (bestTarget) {
       map.flyTo([bestTarget.lat, bestTarget.lng], 17, { duration: 1.2 });
+    } else if (state.agents.length > 0) {
+      map.flyTo([state.agents[0].lat, state.agents[0].lng], 17, { duration: 1.2 });
     } else {
       const epNode = config.nodes[state.activeEpicenter] || config.nodes.Tarqui;
       map.flyTo([epNode.lat, epNode.lng], 17, { duration: 1.2 });
@@ -1424,6 +1554,137 @@
     });
     const act = document.getElementById(`slug-prio-${p}`);
     if (act) act.className = "btn-slug-green py-1 text-[9px] rounded text-black font-heavy cursor-pointer";
+  };
+
+  // ==========================================================================
+  // METAL SLUG & SPOOKYTHON SHOWCASE LOGIC (4 SEIR STATES)
+  // ==========================================================================
+  window.openMetalSlugShowcase = function() {
+    const modal = document.getElementById('metal-slug-showcase');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    renderShowcaseTabs();
+    selectShowcaseHero(activeShowcaseHero);
+  };
+
+  window.closeMetalSlugShowcase = function() {
+    const modal = document.getElementById('metal-slug-showcase');
+    if (modal) modal.classList.add('hidden');
+  };
+
+  window.selectShowcaseHero = function(heroId) {
+    activeShowcaseHero = heroId;
+    const hero = SHOWCASE_GIFS[heroId] || SHOWCASE_GIFS.spookython;
+
+    const imgH = document.getElementById('showcase-img-human');
+    const imgB = document.getElementById('showcase-img-bitten');
+    const imgZ = document.getElementById('showcase-img-zombie');
+    const imgI = document.getElementById('showcase-img-immune');
+
+    const descH = document.getElementById('showcase-desc-human');
+    const descB = document.getElementById('showcase-desc-bitten');
+    const descZ = document.getElementById('showcase-desc-zombie');
+    const descI = document.getElementById('showcase-desc-immune');
+
+    if (imgH) imgH.src = hero.human;
+    if (imgB) imgB.src = hero.bitten;
+    if (imgZ) imgZ.src = hero.zombie;
+    if (imgI) imgI.src = hero.immune;
+
+    if (descH && hero.descH) descH.textContent = hero.descH;
+    if (descB && hero.descB) descB.textContent = hero.descB;
+    if (descZ && hero.descZ) descZ.textContent = hero.descZ;
+    if (descI && hero.descI) descI.textContent = hero.descI;
+
+    // Invalidate DOM sprite cache on the map so active entities immediately switch skin
+    Object.keys(agentDoms).forEach(id => {
+      const dom = agentDoms[id];
+      if (dom) dom._lastSrc = null;
+    });
+
+    renderShowcaseTabs();
+    sfx.button();
+  };
+
+  window.testShowcaseBloodVomit = function() {
+    const banner = document.getElementById('showcase-vomit-banner');
+    if (banner) {
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 1400);
+    }
+    sfx.bloodVomit();
+  };
+
+  window.testShowcaseImmuneShield = function() {
+    sfx.deflect();
+    const imgI = document.getElementById('showcase-img-immune');
+    if (imgI) {
+      imgI.style.transform = 'scale(1.2)';
+      setTimeout(() => { imgI.style.transform = 'scale(1.0)'; }, 350);
+    }
+  };
+
+  function renderShowcaseTabs() {
+    const container = document.getElementById('showcase-character-tabs');
+    if (!container) return;
+    container.innerHTML = `
+      <div class="w-full flex flex-wrap items-center justify-between gap-2 px-2 py-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-amber-300 text-[11px] font-heavy tracking-wider">★ ROSTER EXCLUSIVO SPOOKYTHON 2026 (TRACK B)</span>
+        </div>
+        <div class="flex items-center gap-2 text-[9px] font-mono text-slate-400">
+          <span class="px-2 py-0.5 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 rounded font-bold">4 ESTADOS SEIR</span>
+          <span class="px-2 py-0.5 bg-slate-900 border border-slate-700 text-slate-300 rounded">32x40 @ 8X PIXEL ART</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Quick Map Spawn Testing Functions
+  window.spawnTestZombie = function() {
+    const center = map.getCenter();
+    map.flyTo(center, 17, { duration: 1 });
+    setTimeout(() => {
+      spawnZombieAt(center.lat, center.lng);
+      sfx.bloodVomit();
+      state.hasStarted = true;
+      const simStatus = document.getElementById('slug-sim-status');
+      if (simStatus) {
+        simStatus.innerText = 'BROTE ACTIVO';
+        simStatus.className = 'text-red-500 pulse-alert';
+      }
+    }, 600);
+  };
+
+  window.spawnTestImmune = function() {
+    const center = map.getCenter();
+    map.flyTo(center, 17, { duration: 1 });
+    setTimeout(() => {
+      let nearestAgent = null;
+      let minDist = 999999;
+      state.agents.forEach(a => {
+        const d = Math.hypot(a.lat - center.lat, a.lng - center.lng);
+        if (d < minDist) {
+          minDist = d;
+          nearestAgent = a;
+        }
+      });
+      if (nearestAgent) {
+        nearestAgent.type = 'immune';
+        sfx.deflect();
+        state.particles.push({
+          type: 'text',
+          text: '¡INMUNE HAZMAT SPAWNED!',
+          x: nearestAgent.screenX,
+          y: nearestAgent.screenY - 14,
+          color: '#facc15',
+          life: 1.5,
+          decay: 0.03
+        });
+        updateHUD();
+      }
+    }, 600);
   };
 
   window.resetSimulation = function() {
