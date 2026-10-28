@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" width="100%" height="100%">
+  <defs>
+    <style>
+      .title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 20px; font-weight: bold; fill: #0f172a; }
+      .subtitle { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; fill: #475569; }
+      .box-label { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; font-weight: bold; }
+      .item-title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; font-weight: bold; fill: #1e293b; }
+      .item-sub { font-family: 'Courier New', monospace; font-size: 11px; fill: #64748b; }
+      .flow-text { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; font-weight: 600; fill: #0284c7; }
+      .badge-pub { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; font-weight: bold; fill: #15803d; }
+      .badge-priv { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px; font-weight: bold; fill: #b45309; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#0284c7"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#9333ea"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="2" dy="3" stdDeviation="3" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f8fafc" rx="10"/>
+
+  <!-- Main Title -->
+  <text x="30" y="40" class="title">MantaZero: Epidemic Command — Arquitectura Cloud en AWS</text>
+  <text x="30" y="60" class="subtitle">Spookython 2026 (Track B: La Plaga Zombie) · Región: us-east-1 (N. Virginia)</text>
+
+  <!-- 1. Internet / User Section -->
+  <g transform="translate(30, 90)">
+    <rect width="210" height="490" rx="8" fill="#f0f9ff" stroke="#bae6fd" stroke-width="2" filter="url(#shadow)"/>
+    <text x="20" y="30" class="box-label" fill="#0369a1">🌐 ZONA PÚBLICA</text>
+    <text x="20" y="48" class="item-sub">Acceso vía Internet</text>
+
+    <!-- User Browser -->
+    <rect x="15" y="80" width="180" height="90" rx="6" fill="#ffffff" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="25" y="105" class="item-title">👤 Usuario / Jurado</text>
+    <text x="25" y="125" class="item-sub">Navegador Web</text>
+    <text x="25" y="145" class="item-sub">HTTP Port 8080</text>
+    <rect x="25" y="152" width="75" height="15" rx="3" fill="#dcfce7"/>
+    <text x="30" y="163" class="badge-pub">● PÚBLICO</text>
+
+    <!-- REST Client -->
+    <rect x="15" y="210" width="180" height="85" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="25" y="235" class="item-title">📡 Clientes API / cURL</text>
+    <text x="25" y="255" class="item-sub">POST /api/sim/launch</text>
+    <text x="25" y="272" class="item-sub">GET /api/montecarlo</text>
+
+    <!-- Note on IP -->
+    <rect x="15" y="380" width="180" height="80" rx="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1"/>
+    <text x="25" y="405" class="item-title" fill="#1d4ed8">🌐 URL Despliegue:</text>
+    <text x="25" y="425" class="item-sub" font-weight="bold" fill="#1e40af">3.228.0.232</text>
+    <text x="25" y="445" class="item-sub">Puerto TCP 8080</text>
+  </g>
+
+  <!-- Flow Arrow from Public to AWS -->
+  <path d="M 240 225 L 310 225" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="245" y="215" class="flow-text">HTTP /:8080</text>
+
+  <!-- 2. AWS Cloud Section -->
+  <g transform="translate(320, 90)">
+    <rect width="610" height="490" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" filter="url(#shadow)"/>
+    <text x="20" y="30" class="box-label" fill="#475569">☁️ AWS CLOUD (us-east-1)</text>
+    <text x="20" y="48" class="item-sub">VPC ID: vpc-0f9ebc7ece6d2a837 (172.31.0.0/16)</text>
+
+    <!-- Security Group Box -->
+    <rect x="20" y="70" width="370" height="395" rx="8" fill="#f8fafc" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,4"/>
+    <text x="35" y="92" class="item-title" fill="#b45309">🛡️ Security Group (sg-0f28593e6c8063193)</text>
+    <text x="35" y="108" class="item-sub">Inbound: Port 8080 (0.0.0.0/0) · Outbound: All</text>
+
+    <!-- ECS Cluster Box inside Subnet -->
+    <rect x="35" y="125" width="340" height="325" rx="6" fill="#f1f5f9" stroke="#059669" stroke-width="2"/>
+    <text x="50" y="150" class="item-title" fill="#065f46">📦 ECS Cluster: mantazero-cluster</text>
+    <text x="50" y="166" class="item-sub">Launch Type: AWS FARGATE (Serverless Container)</text>
+
+    <!-- Fargate Task Box -->
+    <rect x="50" y="180" width="310" height="255" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/>
+    <text x="65" y="205" class="item-title" fill="#047857">🚀 Task: mantazero:4 (0.25 vCPU, 512 MB)</text>
+    <text x="65" y="222" class="item-sub">ENI: eni-059fcdf2fd51f0d46 · IP: 3.228.0.232</text>
+
+    <!-- Internal Components -->
+    <rect x="65" y="235" width="280" height="42" rx="4" fill="#f0fdf4" stroke="#86efac"/>
+    <text x="75" y="253" class="item-title" font-size="12px">⚡ FastAPI Server (Uvicorn - Python 3.14)</text>
+    <text x="75" y="268" class="item-sub">Endpoints /api/* + Healthcheck /api/health</text>
+
+    <rect x="65" y="285" width="280" height="42" rx="4" fill="#ecfeff" stroke="#a5f3fc"/>
+    <text x="75" y="303" class="item-title" font-size="12px">🗺️ Frontend Estático (Leaflet 2D + Sprites)</text>
+    <text x="75" y="318" class="item-sub">Montado en "/" vía FastAPI StaticFiles</text>
+
+    <rect x="65" y="335" width="280" height="42" rx="4" fill="#fefce8" stroke="#fef08a"/>
+    <text x="75" y="353" class="item-title" font-size="12px">⚙️ SeirSimulationEngine (In-Memory)</text>
+    <text x="75" y="368" class="item-sub">Estado táctico, conteo de bajas, antídotos</text>
+
+    <rect x="65" y="385" width="280" height="42" rx="4" fill="#fdf2f8" stroke="#fbcfe8"/>
+    <text x="75" y="403" class="item-title" font-size="12px">🔄 MonteCarloRunner (NumPy Vectorizado)</text>
+    <text x="75" y="418" class="item-sub">400-5000 corridas en thread separado con seed=42</text>
+
+    <!-- Managed AWS Services Column -->
+    <g transform="translate(410, 70)">
+      <text x="0" y="22" class="box-label" fill="#475569">⚙️ SERVICIOS AWS</text>
+
+      <!-- ECR -->
+      <rect x="0" y="40" width="180" height="75" rx="6" fill="#fdf4ff" stroke="#e879f9" stroke-width="1.5"/>
+      <text x="12" y="65" class="item-title" fill="#86198f">📦 Amazon ECR</text>
+      <text x="12" y="82" class="item-sub">mantazero:latest</text>
+      <text x="12" y="98" class="item-sub">028610956449.dkr.ecr</text>
+
+      <!-- CloudWatch -->
+      <rect x="0" y="130" width="180" height="75" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+      <text x="12" y="155" class="item-title" fill="#334155">📊 CloudWatch Logs</text>
+      <text x="12" y="172" class="item-sub">Log Group:</text>
+      <text x="12" y="188" class="item-sub">/ecs/mantazero</text>
+
+      <!-- IAM Execution Role -->
+      <rect x="0" y="220" width="180" height="75" rx="6" fill="#fffbeb" stroke="#fcd34d" stroke-width="1.5"/>
+      <text x="12" y="245" class="item-title" fill="#78350f">🔐 AWS IAM Role</text>
+      <text x="12" y="262" class="item-sub">ecsTaskExecutionRole</text>
+      <text x="12" y="278" class="item-sub">Principle: Least Privilege</text>
+
+      <!-- AWS Budgets -->
+      <rect x="0" y="310" width="180" height="85" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+      <text x="12" y="335" class="item-title" fill="#14532d">💰 AWS Budgets</text>
+      <text x="12" y="352" class="item-sub">Límite: $50 USD/mes</text>
+      <text x="12" y="368" class="item-sub">Alertas al 25%, 50%, 80%</text>
+      <text x="12" y="384" class="badge-pub" fill="#16a34a">● ACTIVO Y MONITOREADO</text>
+    </g>
+
+    <!-- Internal Data Connections -->
+    <path d="M 410 145 L 375 220" stroke="#c026d3" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow-purple)"/>
+    <path d="M 360 270 L 410 240" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+  </g>
+</svg>

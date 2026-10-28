@@ -63,7 +63,7 @@ La raíz del proyecto contiene solo lo esencial:
 - **Región:** us-east-1
 - **Cluster:** mantazero-cluster
 - **Service:** mantazero-service
-- **URL:** http://100.54.228.201:8080
+- **URL:** http://3.228.0.232:8080
 - **Status:** ✅ RUNNING
 
 ---

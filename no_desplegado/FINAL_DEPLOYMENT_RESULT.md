@@ -2,9 +2,9 @@
 
 **Fecha:** 28 de Octubre de 2026, 01:35 AM  
 **Status:** ✅ **DESPLEGADO EN AWS ECS FARGATE**  
-**IP Pública:** `100.54.228.201`  
+**IP Pública:** `3.228.0.232`  
 **Puerto:** `8080`  
-**URL Completa:** `http://100.54.228.201:8080`
+**URL Completa:** `http://3.228.0.232:8080`
 
 ---
 

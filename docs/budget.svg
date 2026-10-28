@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="100%" height="100%">
+  <defs>
+    <style>
+      .aws-header { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; font-weight: bold; fill: #232f3e; }
+      .aws-nav { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; fill: #545b64; }
+      .title-large { font-family: 'Segoe UI', Arial, sans-serif; font-size: 22px; font-weight: 700; fill: #16191f; }
+      .kpi-title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; font-weight: 600; fill: #545b64; }
+      .kpi-val { font-family: 'Segoe UI', Arial, sans-serif; font-size: 24px; font-weight: bold; fill: #16191f; }
+      .kpi-sub { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; fill: #16a34a; font-weight: 600; }
+      .tbl-header { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; font-weight: 700; fill: #545b64; }
+      .tbl-cell { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; fill: #16191f; }
+      .status-ok { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; font-weight: 700; fill: #15803d; }
+    </style>
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- AWS Console Mockup Background -->
+  <rect width="100%" height="100%" fill="#f2f3f3" rx="8"/>
+
+  <!-- Console Top Bar -->
+  <rect width="100%" height="45" fill="#232f3e" rx="8 8 0 0"/>
+  <text x="25" y="28" font-family="'Segoe UI', Arial, sans-serif" font-size="16" font-weight="bold" fill="#ff9900">aws</text>
+  <text x="60" y="28" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="600" fill="#ffffff">Billing and Cost Management</text>
+  <rect x="290" y="10" width="220" height="25" rx="4" fill="#16191f"/>
+  <text x="305" y="26" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#879596">🔍 Search budgets...</text>
+  <text x="730" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="12" fill="#d5dbdb">us-east-1</text>
+  <text x="800" y="27" font-family="'Segoe UI', Arial, sans-serif" font-size="12" fill="#d5dbdb">028610956449</text>
+
+  <!-- Breadcrumb -->
+  <text x="30" y="75" class="aws-nav">AWS Cost Management &gt; Budgets &gt; MantaZero-Spookython-Budget</text>
+  <text x="30" y="105" class="title-large">MantaZero-Spookython-Budget</text>
+  <rect x="360" y="88" width="60" height="20" rx="10" fill="#dcfce7" stroke="#86efac"/>
+  <text x="372" y="102" class="status-ok">● Active</text>
+
+  <!-- Top Metrics Cards -->
+  <g transform="translate(30, 125)">
+    <!-- Card 1: Budgeted Amount -->
+    <rect x="0" y="0" width="265" height="100" rx="6" fill="#ffffff" stroke="#eaeded" stroke-width="1.5" filter="url(#card-shadow)"/>
+    <text x="20" y="30" class="kpi-title">BUDGETED AMOUNT</text>
+    <text x="20" y="65" class="kpi-val">$50.00 USD</text>
+    <text x="20" y="85" class="aws-nav">Monthly recurring limit</text>
+
+    <!-- Card 2: Current Spend -->
+    <rect x="285" y="0" width="265" height="100" rx="6" fill="#ffffff" stroke="#eaeded" stroke-width="1.5" filter="url(#card-shadow)"/>
+    <text x="305" y="30" class="kpi-title">CURRENT SPEND (OCTOBER 2026)</text>
+    <text x="305" y="65" class="kpi-val" fill="#15803d">$0.63 USD</text>
+    <text x="305" y="85" class="kpi-sub">● 1.26% of budgeted amount</text>
+
+    <!-- Card 3: Forecasted Spend -->
+    <rect x="570" y="0" width="270" height="100" rx="6" fill="#ffffff" stroke="#eaeded" stroke-width="1.5" filter="url(#card-shadow)"/>
+    <text x="590" y="30" class="kpi-title">FORECASTED SPEND</text>
+    <text x="590" y="65" class="kpi-val">$9.41 USD</text>
+    <text x="590" y="85" class="aws-nav">Under budget ($40.59 remaining)</text>
+  </g>
+
+  <!-- Budget Progress Bar -->
+  <g transform="translate(30, 245)">
+    <rect width="840" height="70" rx="6" fill="#ffffff" stroke="#eaeded" stroke-width="1.5" filter="url(#card-shadow)"/>
+    <text x="20" y="25" class="kpi-title">BUDGET PERFORMANCE PROGRESS</text>
+    <rect x="20" y="36" width="800" height="14" rx="4" fill="#e2e8f0"/>
+    <rect x="20" y="36" width="10" height="14" rx="4" fill="#16a34a"/>
+    <text x="760" y="25" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="700" fill="#545b64">$50.00 Max</text>
+  </g>
+
+  <!-- Alert Notifications Table -->
+  <g transform="translate(30, 335)">
+    <rect width="840" height="125" rx="6" fill="#ffffff" stroke="#eaeded" stroke-width="1.5" filter="url(#card-shadow)"/>
+    <text x="20" y="25" class="kpi-title">CONFIGURED ALERT THRESHOLDS (NOTIFICATION RECIPIENTS)</text>
+
+    <!-- Table Header -->
+    <line x1="20" y1="36" x2="820" y2="36" stroke="#eaeded" stroke-width="1"/>
+    <text x="25" y="52" class="tbl-header">THRESHOLD</text>
+    <text x="180" y="52" class="tbl-header">TRIGGER AMOUNT</text>
+    <text x="350" y="52" class="tbl-header">BASIS</text>
+    <text x="490" y="52" class="tbl-header">RECIPIENTS</text>
+    <text x="730" y="52" class="tbl-header">STATUS</text>
+
+    <!-- Row 1: 50% Alert -->
+    <line x1="20" y1="62" x2="820" y2="62" stroke="#f1f5f9" stroke-width="1"/>
+    <text x="25" y="80" class="tbl-cell" font-weight="600">50%</text>
+    <text x="180" y="80" class="tbl-cell">$25.00 USD</text>
+    <text x="350" y="80" class="tbl-cell">Actual spend</text>
+    <text x="490" y="80" class="tbl-cell">magno.barcoa@ug.edu.ec</text>
+    <text x="730" y="80" class="status-ok">● OK (Not triggered)</text>
+
+    <!-- Row 2: 80% Alert -->
+    <line x1="20" y1="92" x2="820" y2="92" stroke="#f1f5f9" stroke-width="1"/>
+    <text x="25" y="110" class="tbl-cell" font-weight="600">80%</text>
+    <text x="180" y="110" class="tbl-cell">$40.00 USD</text>
+    <text x="350" y="110" class="tbl-cell">Actual spend</text>
+    <text x="490" y="110" class="tbl-cell">magno.barcoa@ug.edu.ec</text>
+    <text x="730" y="110" class="status-ok">● OK (Not triggered)</text>
+  </g>
+</svg>

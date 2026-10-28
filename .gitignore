@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Environment & credentials
+.env
+.env.local
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Project archives
+app.zip
+
+.aos/native/
+.aos/.backups/
+.playwright-cli/
+
+# >>> DASS-AOS adapt-native: antigravity (generado, no editar) >>>
+# .agents/skills/adversarial-review/SKILL.md
+# .agents/skills/api-smoke-test/SKILL.md
+# .agents/skills/bootstrap-project/SKILL.md
+# .agents/skills/generate-client/SKILL.md
+# .agents/skills/git-atomic-commit/SKILL.md
+# .agents/skills/live-verify/SKILL.md
+# .agents/skills/memory-refresh/SKILL.md
+# .agents/skills/phased-delivery/SKILL.md
+# .agents/skills/semgrep-scan/SKILL.md
+# .agents/skills/spec-driven/SKILL.md
+# .agents/skills/sync-agent-instructions/SKILL.md
+# <<< DASS-AOS adapt-native: antigravity <<<
